@@ -22,6 +22,9 @@
 #include "WildTypeCellMutationState.hpp"
 #include "TransitCellProliferativeType.hpp"
 #include "StemCellProliferativeType.hpp"
+#include "EpithelialLayerAnoikisCellKiller.hpp"
+#include "EpithelialLayerBasementMembraneForce.hpp"
+#include "EpithelialLayerLinearSpringForce.hpp"
 
 
 
@@ -36,6 +39,15 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 		double lumen_left_edge = 6.5;
 		double lumen_right_edge = 13.5;
 		double lumen_bottom = 4.5;
+		//Basement membrane force parameters
+		double bm_force = 10.0;
+		double target_curvature = 2.0;
+		//Set all the spring stiffness variables
+		double epithelial_epithelial_stiffness = 15.0; //Epithelial-epithelial spring connections
+		double epithelial_nonepithelial_stiffness = 15.0; //Epithelial-non-epithelial spring connections
+		double nonepithelial_nonepithelial_stiffness = 15.0; //Non-epithelial-non-epithelial spring connections
+		//Set the stiffness ratio for Paneth cells to stem cells. This is the
+		double stiffness_ratio = 4.5;
 		//Start off with a mesh
 		HoneycombMeshGenerator generator(cells_up, cells_across, ghosts);
 		MutableMesh<2,2>* p_mesh = generator.GetMesh();
@@ -117,9 +129,23 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 
 		//Set output directory
 		simulator.SetOutputDirectory("TestGeneratedCells");
-        simulator.SetEndTime(50.0);
+        simulator.SetEndTime(100.0);
 
         simulator.SetSamplingTimestepMultiple(30);
+
+        /* Add an anoikis-based cell killer. */
+		MAKE_PTR_ARGS(EpithelialLayerAnoikisCellKiller, p_anoikis_killer, (&cell_population));
+		simulator.AddCellKiller(p_anoikis_killer);
+
+		//Spring forces from Axel
+		// MAKE_PTR(EpithelialLayerLinearSpringForce<2>, p_spring_force);
+		// p_spring_force->SetCutOffLength(1.5);
+		// //Set the spring stiffnesses
+		// p_spring_force->SetEpithelialEpithelialSpringStiffness(epithelial_epithelial_stiffness);
+		// p_spring_force->SetEpithelialNonepithelialSpringStiffness(epithelial_nonepithelial_stiffness);
+		// p_spring_force->SetNonepithelialNonepithelialSpringStiffness(nonepithelial_nonepithelial_stiffness);
+		// p_spring_force->SetPanethCellStiffnessRatio(stiffness_ratio);
+		// simulator.AddForce(p_spring_force);
 
         MAKE_PTR(GeneralisedLinearSpringForce<2>, p_force);
         simulator.AddForce(p_force);
