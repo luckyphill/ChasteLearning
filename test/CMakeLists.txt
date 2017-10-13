@@ -1,1 +1,1 @@
-chaste_do_test_project(LearningChaste)
+chaste_do_test_project(ChasteLearning)

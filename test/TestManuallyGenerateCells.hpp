@@ -39,6 +39,9 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 		double lumen_left_edge = 6.5;
 		double lumen_right_edge = 13.5;
 		double lumen_bottom = 4.5;
+
+		double end_time = 100;
+		double sampling_multiple = 30;
 		//Basement membrane force parameters
 		double bm_force = 10.0;
 		double target_curvature = 2.0;
@@ -129,9 +132,9 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 
 		//Set output directory
 		simulator.SetOutputDirectory("TestGeneratedCells");
-        simulator.SetEndTime(100.0);
+        simulator.SetEndTime(end_time);
 
-        simulator.SetSamplingTimestepMultiple(30);
+        simulator.SetSamplingTimestepMultiple(sampling_multiple);
 
         /* Add an anoikis-based cell killer. */
 		MAKE_PTR_ARGS(EpithelialLayerAnoikisCellKiller, p_anoikis_killer, (&cell_population));
