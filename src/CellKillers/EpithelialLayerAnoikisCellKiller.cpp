@@ -8,6 +8,12 @@
  * 			Author: Axel Almet
  */
 
+/*
+ * MODIFIED BY PHILLIP BROWN 18/10/2017
+ * Added in a check for an anoikis resistant mutation, which stops a cell from dying when it
+ * detaches from the non epithelial region i.e. the basement layer of cells
+ */
+
 #include "EpithelialLayerAnoikisCellKiller.hpp"
 #include "AbstractCellKiller.hpp"
 #include "AbstractCellProperty.hpp"
