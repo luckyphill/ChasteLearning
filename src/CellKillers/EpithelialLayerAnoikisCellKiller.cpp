@@ -220,7 +220,9 @@ std::vector<c_vector<unsigned,2> > EpithelialLayerAnoikisCellKiller::RemoveByAno
 
     		// Examine each epithelial node to see if it should be removed by anoikis and then if it
     		// should be removed by compression-driven apoptosis
-    		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+    		// Edit by Phillip Brown: Added a check for anoikis resistant mutation to prevent this kind of cell death
+    		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>()
+    			&& !cell_iter->GetMutationState()->IsType<TransitCellAnoikisResistantMutationState>)
     		{
     			// Determining whether to remove this cell by anoikis
 
