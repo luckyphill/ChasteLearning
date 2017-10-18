@@ -28,13 +28,13 @@
 
 
 
-class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
+class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 {
 	public:
 	void TestGeneratedCells() throw(Exception)
 	{
-		unsigned cells_up = 20;
-		unsigned cells_across = 20;
+		unsigned cells_up = 30;
+		unsigned cells_across = 30;
 		unsigned ghosts = 4;
 		double lumen_left_edge = 6.5;
 		double lumen_right_edge = 13.5;
@@ -44,12 +44,12 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 		//Copied wholesale from Axel
 		//used to make the base of the test tube shaped crypt
 		c_vector<double,2> circle_centre;
-		circle_centre(0) = 10.5;
-		circle_centre(1) = 7.5;
+		circle_centre(0) = cells_across/2;
+		circle_centre(1) = 10;
 
-		double circle_radius = 3; //Size of hole
+		double circle_radius = 5; //Size of hole
 
-		double ring_radius = circle_radius + 2.0;
+		double ring_width = 0.9;
 
 
 		double end_time = 100;
@@ -84,8 +84,21 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 			double x = p_mesh->GetNode(cell_index)->rGetLocation()[0];
 			double y = p_mesh->GetNode(cell_index)->rGetLocation()[1];
 
+			//temporarily making all cells real
+			// if (x<=cells_across && x >=0 && y <=cells_up * 0.85 && y >=0)
+			// //if (((x < lumen_left_edge) || (x >lumen_right_edge)) || y < - sqrt(pow(circle_radius,2) - pow(x - circle_centre[1],2)) + circle_centre[1])
+			// {
+			// 	real_indices.push_back(cell_index);
+			// }
 
-			if (((x < lumen_left_edge) || (x >lumen_right_edge)) || y < sqrt(pow(circle_radius,2) - pow(x,2)) + circle_centre[1])
+			//Make the curved crypt base
+			if ( (pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) > pow(circle_radius,2)) && y<= circle_centre[1])
+			{
+				real_indices.push_back(cell_index);
+
+			}
+
+			if ( ((x <= circle_centre[0] - circle_radius -.5) || (x >= circle_centre[0] + circle_radius + .5)) && (y > circle_centre[1]))
 			{
 				real_indices.push_back(cell_index);
 			}
@@ -118,17 +131,34 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 			double x = p_mesh->GetNode(cell_index)->rGetLocation()[0];
 			double y = p_mesh->GetNode(cell_index)->rGetLocation()[1];
 
-			p_cell->SetCellProliferativeType(p_diff_type);
+			p_cell->SetCellProliferativeType(p_diff_type); //set the type to differentiated if it's not a ghost node - types will be reset as follows
 
-			if (((floor(lumen_left_edge)-1< x && x <= floor(lumen_left_edge)) || (ceil(lumen_right_edge) <= x && x < ceil(lumen_right_edge)+1)) && y > circle_centre[1])
-			{
-				p_cell->SetCellProliferativeType(p_trans_type); //Set the cell to be transit if it's on the edge of the lumen
-			}
-
-			if (pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) > pow(circle_radius,2) && y <circle_centre[1])
+			//add stems cells to the base of the crypt
+			if ((pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) > pow(circle_radius,2)) && (pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) < pow(circle_radius + ring_width,2)) && y<= circle_centre[1])
 			{
 				p_cell->SetCellProliferativeType(p_stem_type); //set the cell to stem if it's at the base of the lumen
 			}
+
+			//add transit cells to the left edge of lumen
+			if ( ((x <= circle_centre[0] - circle_radius -.5) && (x >= circle_centre[0] - circle_radius -1)) && (y > circle_centre[1]))
+			{
+				p_cell->SetCellProliferativeType(p_trans_type);
+			}
+			//add transit cells to the right edge of lumen
+			if ( ((x >= circle_centre[0] + circle_radius +.5) && (x <= circle_centre[0] + circle_radius +1)) && (y > circle_centre[1]))
+			{
+				p_cell->SetCellProliferativeType(p_trans_type); 
+			}
+			
+			// if (((floor(lumen_left_edge)-1< x && x <= floor(lumen_left_edge)) || (ceil(lumen_right_edge) <= x && x < ceil(lumen_right_edge)+1)) && y > circle_centre[1])
+			// {
+			// 	p_cell->SetCellProliferativeType(p_trans_type); //Set the cell to be transit if it's on the edge of the lumen
+			// }
+
+			// if (pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) > pow(circle_radius,2) && pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) < pow(circle_radius,2) +1 && y <circle_centre[1])
+			// {
+			// 	p_cell->SetCellProliferativeType(p_stem_type); //set the cell to stem if it's at the base of the lumen
+			// }
 
 			p_cell->InitialiseCellCycleModel();
 
@@ -144,7 +174,7 @@ class TestManuallyGenerateCells : public AbstractCellBasedTestSuite
 		OffLatticeSimulation<2> simulator(cell_population);
 
 		//Set output directory
-		simulator.SetOutputDirectory("TestGeneratedCells");
+		simulator.SetOutputDirectory("TestBasicTestTubeCrypt");
         simulator.SetEndTime(end_time);
 
         simulator.SetSamplingTimestepMultiple(sampling_multiple);
