@@ -20,6 +20,7 @@
 #include "MeshBasedCellPopulation.hpp"
 #include "NodeBasedCellPopulation.hpp"
 #include "PanethCellMutationState.hpp"
+#include "TransitCellAnoikisResistantMutationState.hpp"
 
 EpithelialLayerAnoikisCellKiller::EpithelialLayerAnoikisCellKiller(AbstractCellPopulation<2>* pCellPopulation)
     : AbstractCellKiller<2>(pCellPopulation),
@@ -189,7 +190,7 @@ std::vector<c_vector<unsigned,2> > EpithelialLayerAnoikisCellKiller::RemoveByAno
     		// should be removed by compression-driven apoptosis
     		// Edit by Phillip Brown: Added a check for anoikis resistant mutation to prevent this kind of cell death
     		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>()
-    			&& !cell_iter->GetMutationState()->IsType<TransitCellAnoikisResistantMutationState>)
+    			&& !cell_iter->GetMutationState()->IsType<TransitCellAnoikisResistantMutationState>())
     		{
     			// Determining whether to remove this cell by anoikis
 
@@ -222,7 +223,7 @@ std::vector<c_vector<unsigned,2> > EpithelialLayerAnoikisCellKiller::RemoveByAno
     		// should be removed by compression-driven apoptosis
     		// Edit by Phillip Brown: Added a check for anoikis resistant mutation to prevent this kind of cell death
     		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>()
-    			&& !cell_iter->GetMutationState()->IsType<TransitCellAnoikisResistantMutationState>)
+    			&& !cell_iter->GetMutationState()->IsType<TransitCellAnoikisResistantMutationState>())
     		{
     			// Determining whether to remove this cell by anoikis
 

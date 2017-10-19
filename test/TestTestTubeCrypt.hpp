@@ -25,6 +25,7 @@
 #include "EpithelialLayerAnoikisCellKiller.hpp"
 #include "EpithelialLayerBasementMembraneForce.hpp"
 #include "EpithelialLayerLinearSpringForce.hpp"
+#include "TransitCellAnoikisResistantMutationState.hpp"
 
 
 
@@ -51,12 +52,11 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 		double ring_width = 0.9;
 
-
-		double end_time = 100;
+		double end_time = 40;
 		double sampling_multiple = 30;
 		//Basement membrane force parameters
-		double bm_force = 10.0;
-		double target_curvature = 2.0;
+		double bm_force = 6.0;
+		double target_curvature = .15;
 		//Set all the spring stiffness variables
 		double epithelial_epithelial_stiffness = 15.0; //Epithelial-epithelial spring connections
 		double epithelial_nonepithelial_stiffness = 15.0; //Epithelial-non-epithelial spring connections
@@ -83,13 +83,6 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 			unsigned cell_index = initial_real_indices[i];
 			double x = p_mesh->GetNode(cell_index)->rGetLocation()[0];
 			double y = p_mesh->GetNode(cell_index)->rGetLocation()[1];
-
-			//temporarily making all cells real
-			// if (x<=cells_across && x >=0 && y <=cells_up * 0.85 && y >=0)
-			// //if (((x < lumen_left_edge) || (x >lumen_right_edge)) || y < - sqrt(pow(circle_radius,2) - pow(x - circle_centre[1],2)) + circle_centre[1])
-			// {
-			// 	real_indices.push_back(cell_index);
-			// }
 
 			//Make the curved crypt base
 			if ( (pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) > pow(circle_radius,2)) && y<= circle_centre[1])
@@ -150,15 +143,6 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 				p_cell->SetCellProliferativeType(p_trans_type); 
 			}
 			
-			// if (((floor(lumen_left_edge)-1< x && x <= floor(lumen_left_edge)) || (ceil(lumen_right_edge) <= x && x < ceil(lumen_right_edge)+1)) && y > circle_centre[1])
-			// {
-			// 	p_cell->SetCellProliferativeType(p_trans_type); //Set the cell to be transit if it's on the edge of the lumen
-			// }
-
-			// if (pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) > pow(circle_radius,2) && pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) < pow(circle_radius,2) +1 && y <circle_centre[1])
-			// {
-			// 	p_cell->SetCellProliferativeType(p_stem_type); //set the cell to stem if it's at the base of the lumen
-			// }
 
 			p_cell->InitialiseCellCycleModel();
 
@@ -183,18 +167,29 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		MAKE_PTR_ARGS(EpithelialLayerAnoikisCellKiller, p_anoikis_killer, (&cell_population));
 		simulator.AddCellKiller(p_anoikis_killer);
 
-		//Spring forces from Axel
-		// MAKE_PTR(EpithelialLayerLinearSpringForce<2>, p_spring_force);
-		// p_spring_force->SetCutOffLength(1.5);
-		// //Set the spring stiffnesses
-		// p_spring_force->SetEpithelialEpithelialSpringStiffness(epithelial_epithelial_stiffness);
-		// p_spring_force->SetEpithelialNonepithelialSpringStiffness(epithelial_nonepithelial_stiffness);
-		// p_spring_force->SetNonepithelialNonepithelialSpringStiffness(nonepithelial_nonepithelial_stiffness);
-		// p_spring_force->SetPanethCellStiffnessRatio(stiffness_ratio);
-		// simulator.AddForce(p_spring_force);
-
         MAKE_PTR(GeneralisedLinearSpringForce<2>, p_force);
         simulator.AddForce(p_force);
+
+        //Basement membrane force
+        MAKE_PTR(EpithelialLayerBasementMembraneForce, p_bm_force);
+		p_bm_force->SetBasementMembraneParameter(bm_force); //Equivalent to beta in SJD's papers
+		p_bm_force->SetTargetCurvature(target_curvature); //This is equivalent to 1/R in SJD's papers
+		simulator.AddForce(p_bm_force);
+
+		//mutate a cell so it does not die from anoikis
+        boost::shared_ptr<AbstractCellProperty> p_state_mutated = CellPropertyRegistry::Instance()->Get<TransitCellAnoikisResistantMutationState>();
+
+        for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population.Begin();
+             cell_iter != cell_population.End();
+             ++cell_iter)
+        {
+            unsigned node_index = cell_population.GetLocationIndexUsingCell(*cell_iter);
+
+            if (node_index == 822) // Chosen from looking at the results from steady state
+            {
+                cell_iter->SetMutationState(p_state_mutated);
+            }
+        }
 
         simulator.Solve();
 

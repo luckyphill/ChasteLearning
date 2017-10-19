@@ -32,6 +32,7 @@ public:
      */
     TransitCellAnoikisResistantMutationState();
 
+
 };
 
 #include "SerializationExportWrapper.hpp"
