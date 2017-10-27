@@ -16,6 +16,12 @@
  * A force class that defines the force due to the basement membrane.
  */
 
+/*
+ * Created by: PHILLIP BROWN, 27/10/2017
+ * Initial Structure borrows heavily from "EpithelialLayerBasementMembraneForce.hpp"
+ * as found in the Chaste Paper Tutorials for the CryptFissionPlos2016 project
+ */
+
 class MembraneCellForce : public AbstractForce<2>
 {
     friend class TestCrossSectionModelInteractionForce;
@@ -57,6 +63,16 @@ public :
      * Destructor.
      */
     ~MembraneCellForce();
+
+    /**
+     * Pure virtual, must implement
+     */
+    void AddForceContribution(AbstractCellPopulation<2>& rCellPopulation); // 
+
+    /**
+     * Pure virtual, must implement
+     */
+    void OutputForceParameters(out_stream& rParamsFile);
 
     /* Set method for Basement Membrane Parameter
      */
@@ -127,22 +143,7 @@ public :
      */
     bool HasEpithelialCellDetachedFromBasementMembrane(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex);
 
-    /**
-     * Overridden AddForceContribution method.
-     *
-     * @param rCellPopulation reference to the tissue
-     */
-    void AddForceContribution(AbstractCellPopulation<2>& rCellPopulation);
-
-    /**
-     * Outputs force Parameters to file
-	 *
-     * As this method is pure virtual, it must be overridden
-     * in subclasses.
-     *
-     * @param rParamsFile the file stream to which the parameters are output
-     */
-    void OutputForceParameters(out_stream& rParamsFile);
+   
 
 };
 
