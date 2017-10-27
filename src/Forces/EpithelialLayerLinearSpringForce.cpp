@@ -1,4 +1,11 @@
 /*
+MODIFIED BY PHILLIP BROWN: 27/10/2017
+- Added mutation that turns a differentiated cell into a "membrane cell" in 
+in order to test a method of introducing a membrane
+- The modifications here only change the way the "mutant" cells interact with each
+other. Otherwise they are still considered "differentiated" cells for other interactions
+MODIFICATIONS around lines 48, 211, 259, 410, 448
+
 MODIFIED BY AXEL ALMET: 23/12/14
 Copyright (c) 2005-2014, University of Oxford.
 All rights reserved.
@@ -38,6 +45,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AbstractCellProperty.hpp"
 
 #include "PanethCellMutationState.hpp"
+#include "DifferentiatedMembraneState.hpp"
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 EpithelialLayerLinearSpringForce<ELEMENT_DIM,SPACE_DIM>::EpithelialLayerLinearSpringForce()
@@ -204,6 +212,9 @@ c_vector<double, SPACE_DIM> EpithelialLayerLinearSpringForce<ELEMENT_DIM,SPACE_D
     rest_length = a_rest_length + b_rest_length;
     //assert(rest_length <= 1.0+1e-12); ///\todo #1884 Magic number: would "<= 1.0" do?
 
+    //Add in test for being the membrane
+    bool membraneA = p_cell_A->GetMutationState()->IsType<DifferentiatedMembraneState>();
+    bool membraneB = p_cell_B->GetMutationState()->IsType<DifferentiatedMembraneState>();
     //Checks if A and B are proliferative or differentiated cells.
     bool typeA = p_cell_A->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>();
     bool typeB = p_cell_B->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>();
@@ -248,29 +259,58 @@ c_vector<double, SPACE_DIM> EpithelialLayerLinearSpringForce<ELEMENT_DIM,SPACE_D
     //If both the nodes represent the Matrigel
     else if  ((typeA == typeB) && (typeA))
     {
-    	double nonepithelial_nonepithelial_spring_stiffness = mNonepithelialNonepithelialSpringStiffness;
+        if (!((membraneA == membraneB) && membraneA)) //if both nodes are just below the membrane
+        {
+        	double nonepithelial_nonepithelial_spring_stiffness = mNonepithelialNonepithelialSpringStiffness;
 
-    	if (dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation))
-    	{
-    		return multiplication_factor * nonepithelial_nonepithelial_spring_stiffness * unit_difference * overlap;
-    	}
-    	else
-    	{
-    		// A reasonably stable simple force law
-    		if (is_closer_than_rest_length) //overlap is negative
-    		{
-    			//log(x+1) is undefined for x<=-1
-    			assert(overlap > -rest_length_final);
-    			c_vector<double, SPACE_DIM> temp = multiplication_factor*nonepithelial_nonepithelial_spring_stiffness * unit_difference * rest_length_final* log(1.0 + overlap/rest_length_final);
-    			return temp;
-    		}
-    		else
-    		{
-    			double alpha = 5.0;
-    			c_vector<double, SPACE_DIM> temp = multiplication_factor*nonepithelial_nonepithelial_spring_stiffness * unit_difference * overlap * exp(-alpha * overlap/rest_length_final);
-    			return temp;
-    		}
-    	}
+        	if (dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation))
+        	{
+        		return multiplication_factor * nonepithelial_nonepithelial_spring_stiffness * unit_difference * overlap;
+        	}
+        	else
+        	{
+        		// A reasonably stable simple force law
+        		if (is_closer_than_rest_length) //overlap is negative
+        		{
+        			//log(x+1) is undefined for x<=-1
+        			assert(overlap > -rest_length_final);
+        			c_vector<double, SPACE_DIM> temp = multiplication_factor*nonepithelial_nonepithelial_spring_stiffness * unit_difference * rest_length_final* log(1.0 + overlap/rest_length_final);
+        			return temp;
+        		}
+        		else
+        		{
+        			double alpha = 5.0;
+        			c_vector<double, SPACE_DIM> temp = multiplication_factor*nonepithelial_nonepithelial_spring_stiffness * unit_difference * overlap * exp(-alpha * overlap/rest_length_final);
+        			return temp;
+        		}
+        	}
+        }
+        else
+        {
+            //stuff
+            double membrane_spring_stiffness = mMembraneSpringStiffness;
+            if (dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation))
+            {
+                return multiplication_factor * membrane_spring_stiffness * unit_difference * overlap;
+            }
+            else
+            {
+                // A reasonably stable simple force law
+                if (is_closer_than_rest_length) //overlap is negative
+                {
+                    //log(x+1) is undefined for x<=-1
+                    assert(overlap > -rest_length_final);
+                    c_vector<double, SPACE_DIM> temp = multiplication_factor*membrane_spring_stiffness * unit_difference * rest_length_final* log(1.0 + overlap/rest_length_final);
+                    return temp;
+                }
+                else
+                {
+                    double alpha = 5.0;
+                    c_vector<double, SPACE_DIM> temp = multiplication_factor*membrane_spring_stiffness * unit_difference * overlap * exp(-alpha * overlap/rest_length_final);
+                    return temp;
+                }
+            }
+        }
     }
     //If we have a cell-Matrigel pair
     else
@@ -369,6 +409,13 @@ void EpithelialLayerLinearSpringForce<ELEMENT_DIM,SPACE_DIM>::SetNonepithelialNo
 }
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void EpithelialLayerLinearSpringForce<ELEMENT_DIM,SPACE_DIM>::SetMembraneSpringStiffness(double membraneSpringStiffness)
+{
+    assert(membraneSpringStiffness > 0.0);
+    mMembraneSpringStiffness = membraneSpringStiffness;
+}
+
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void EpithelialLayerLinearSpringForce<ELEMENT_DIM,SPACE_DIM>::SetMeinekeDivisionRestingSpringLength(double divisionRestingSpringLength)
 {
     assert(divisionRestingSpringLength <= 1.0);
@@ -399,6 +446,7 @@ void EpithelialLayerLinearSpringForce<ELEMENT_DIM,SPACE_DIM>::OutputForceParamet
     *rParamsFile << "\t\t\t<EpithelialEpithelialSpringStiffness>" << mEpithelialEpithelialSpringStiffness << "</EpithelialEpithelialSpringStiffness>\n";
     *rParamsFile << "\t\t\t<EpithelialNonepithelialSpringStiffness>" << mEpithelialNonepithelialSpringStiffness << "</EpithelialNonepithelialSpringStiffness>\n";
     *rParamsFile << "\t\t\t<NonepithelialNonepithelialSpringStiffness>" << mNonepithelialNonepithelialSpringStiffness << "</NonepithelialNonepithelialSpringStiffness>\n";
+    *rParamsFile << "\t\t\t<MembraneSpringStiffness>" << mMembraneSpringStiffness << "</MembraneSpringStiffness>\n";
     *rParamsFile << "\t\t\t<MeinekeDivisionRestingSpringLength>" << mMeinekeDivisionRestingSpringLength << "</MeinekeDivisionRestingSpringLength>\n";
     *rParamsFile << "\t\t\t<MeinekeSpringGrowthDuration>" << mMeinekeSpringGrowthDuration << "</MeinekeSpringGrowthDuration>\n";
     *rParamsFile << "\t\t\t<PanethCellStiffnessRatio>" << mPanethCellStiffnessRatio << "</PanethCellStiffnessRatio>\n";

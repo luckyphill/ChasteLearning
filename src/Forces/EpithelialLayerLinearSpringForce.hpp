@@ -1,4 +1,11 @@
 /*
+MODIFIED BY PHILLIP BROWN: 27/10/2017
+- Added mutation that turns a differentiated cell into a "membrane cell" in 
+in order to test a method of introducing a membrane
+- The modifications here only change the way the "mutant" cells interact with each
+other. Otherwise they are still considered "differentiated" cells for other interactions
+MODIFICATIONS around lines 120, 240
+
 MODIFIED BY AXEL ALMET FOR RESEARCH: 22/11/14
 Copyright (c) 2005-2014, University of Oxford.
 All rights reserved.
@@ -105,6 +112,12 @@ protected:
      * Non-epithelial to non-epithelial spring stiffness.
      */
     double mNonepithelialNonepithelialSpringStiffness;
+
+    /*
+     *Membrane to membrane stiffness. Note 
+     */
+
+    double mMembraneSpringStiffness;
 
     /**
      * Initial resting spring length after cell division.
@@ -220,6 +233,11 @@ public:
      * Set mNonepithelialNonepithelialSpringStiffness.
      */
     void SetNonepithelialNonepithelialSpringStiffness(double nonepihelialNonepithelialSpringStiffness);
+
+    /**
+     * Set mMembraneSpringStiffness.
+     */
+    void SetMembraneSpringStiffness(double membraneSpringStiffness);
 
     /**
      * Set mMeinekeDivisionRestingSpringLength.

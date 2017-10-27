@@ -26,6 +26,7 @@
 #include "EpithelialLayerBasementMembraneForce.hpp"
 #include "EpithelialLayerLinearSpringForce.hpp"
 #include "TransitCellAnoikisResistantMutationState.hpp"
+#include "DifferentiatedMembraneState.hpp" //not a very good name, supposed to be quick and dirty way to create a "membrane cell" by mutating a differentiated cell
 
 
 
@@ -52,7 +53,8 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 		double ring_width = 0.9;
 
-		double end_time = 40;
+		double dt = 0.001;
+		double end_time = 20;
 		double sampling_multiple = 30;
 		//Basement membrane force parameters
 		double bm_force = 6.0;
@@ -61,6 +63,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		double epithelial_epithelial_stiffness = 15.0; //Epithelial-epithelial spring connections
 		double epithelial_nonepithelial_stiffness = 15.0; //Epithelial-non-epithelial spring connections
 		double nonepithelial_nonepithelial_stiffness = 15.0; //Non-epithelial-non-epithelial spring connections
+		double membrane_stiffness = 30.0; //Stiffnes of mebrane to membrane spring connections
 		//Set the stiffness ratio for Paneth cells to stem cells. This is the
 		double stiffness_ratio = 4.5;
 		//Start off with a mesh
@@ -73,6 +76,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		//Sort through the indices and decide which ones are ghost nodes
 		std::vector<unsigned> initial_real_indices = generator.GetCellLocationIndices();
 		std::vector<unsigned> real_indices;
+		std::set<unsigned> real_indices_set;
 
 		//for each index
 			//check if index falls in the crypt lumen
@@ -88,12 +92,14 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 			if ( (pow(x-circle_centre[0],2) + pow(y-circle_centre[1],2) > pow(circle_radius,2)) && y<= circle_centre[1])
 			{
 				real_indices.push_back(cell_index);
+				real_indices_set.insert(cell_index);
 
 			}
 
 			if ( ((x <= circle_centre[0] - circle_radius -.5) || (x >= circle_centre[0] + circle_radius + .5)) && (y > circle_centre[1]))
 			{
 				real_indices.push_back(cell_index);
+				real_indices_set.insert(cell_index);
 			}
 		}
 		//When instantiating a cell, we need to provide a mutation state
@@ -160,6 +166,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		//Set output directory
 		simulator.SetOutputDirectory("TestBasicTestTubeCrypt");
         simulator.SetEndTime(end_time);
+        simulator.SetDt(dt);
 
         simulator.SetSamplingTimestepMultiple(sampling_multiple);
 
@@ -171,13 +178,25 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
         simulator.AddForce(p_force);
 
         //Basement membrane force
-        MAKE_PTR(EpithelialLayerBasementMembraneForce, p_bm_force);
-		p_bm_force->SetBasementMembraneParameter(bm_force); //Equivalent to beta in SJD's papers
-		p_bm_force->SetTargetCurvature(target_curvature); //This is equivalent to 1/R in SJD's papers
-		simulator.AddForce(p_bm_force);
+  //       MAKE_PTR(EpithelialLayerBasementMembraneForce, p_bm_force);
+		// p_bm_force->SetBasementMembraneParameter(bm_force); //Equivalent to beta in SJD's papers
+		// p_bm_force->SetTargetCurvature(target_curvature); //This is equivalent to 1/R in SJD's papers
+		// simulator.AddForce(p_bm_force);
+
+
+		MAKE_PTR(EpithelialLayerLinearSpringForce<2>, p_spring_force);
+		p_spring_force->SetCutOffLength(1.5);
+		//Set the spring stiffnesses
+		p_spring_force->SetEpithelialEpithelialSpringStiffness(epithelial_epithelial_stiffness);
+		p_spring_force->SetEpithelialNonepithelialSpringStiffness(epithelial_nonepithelial_stiffness);
+		p_spring_force->SetNonepithelialNonepithelialSpringStiffness(nonepithelial_nonepithelial_stiffness);
+		p_spring_force->SetMembraneSpringStiffness(membrane_stiffness);
+		p_spring_force->SetPanethCellStiffnessRatio(stiffness_ratio);
+		simulator.AddForce(p_spring_force);
 
 		//mutate a cell so it does not die from anoikis
         boost::shared_ptr<AbstractCellProperty> p_state_mutated = CellPropertyRegistry::Instance()->Get<TransitCellAnoikisResistantMutationState>();
+        boost::shared_ptr<AbstractCellProperty> p_membrane_mutated = CellPropertyRegistry::Instance()->Get<DifferentiatedMembraneState>();
 
         for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population.Begin();
              cell_iter != cell_population.End();
@@ -189,6 +208,48 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
             {
                 cell_iter->SetMutationState(p_state_mutated);
             }
+            //if cell type is epithelial or stem, then make sure it's a monolayer and make all the connected differentiated cells a mutated type (if they haven't already)
+            if (cell_iter->GetCellProliferativeType()->IsType<TransitCellProliferativeType>() || cell_iter->GetCellProliferativeType()->IsType<StemCellProliferativeType>())
+            {
+	            std::set<unsigned> neighbouring_node_indices = cell_population.GetNeighbouringNodeIndices(node_index);
+	            //loop to make sure we have a monolayer
+	            unsigned real_neighbour_count=0;
+	            for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+	         			iter != neighbouring_node_indices.end();
+	         				++iter)
+	    		{
+	    			//count the number of non-ghost neighbours
+	    			if (real_indices_set.find(*iter) != real_indices_set.end())
+	    			{
+	    				real_neighbour_count +=1;
+	    			}
+	    		}
+	    		//if the cell doesn't have any ghost neighbours, then it's not a monolayer, so convert back to differntiated type
+	    		if (real_neighbour_count == neighbouring_node_indices.size())
+	    		{
+	    			std::cout <<"Changed "<< node_index << std::endl;
+	    			cell_iter->SetCellProliferativeType(p_diff_type);
+	    		} else {
+	    		//loop to make the membrane cells
+		    		for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+		         			iter != neighbouring_node_indices.end();
+		         				++iter)
+		    		{
+		    			if (real_indices_set.find(*iter) != real_indices_set.end()) //make sure the node is not a ghost first
+		    			{
+		    				CellPtr neighbour = cell_population.GetCellUsingLocationIndex(*iter);
+			    			if (neighbour->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+			    			{
+			    				//add mutation
+			    				neighbour->SetMutationState(p_membrane_mutated);
+			    			}
+		    			}
+		    			//check if the cell type is differentiated, then if it is, add the "mutation"
+		    			
+		    		}
+		    	}
+	    	}
+
         }
 
         simulator.Solve();
