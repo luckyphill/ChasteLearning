@@ -1,7 +1,7 @@
 #include "DifferentiatedMembraneState.hpp"
 
 DifferentiatedMembraneState::DifferentiatedMembraneState()
-    : AbstractCellMutationState(0)
+    : AbstractCellMutationState(3)
 {}
 
 

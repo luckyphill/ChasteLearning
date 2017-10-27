@@ -1,7 +1,7 @@
 #include "TransitCellAnoikisResistantMutationState.hpp"
 
 TransitCellAnoikisResistantMutationState::TransitCellAnoikisResistantMutationState()
-    : AbstractCellMutationState(0)
+    : AbstractCellMutationState(4)
 {}
 
 

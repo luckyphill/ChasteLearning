@@ -53,17 +53,17 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 		double ring_width = 0.9;
 
-		double dt = 0.001;
+		double dt = 0.01;
 		double end_time = 20;
-		double sampling_multiple = 30;
+		double sampling_multiple = 100;
 		//Basement membrane force parameters
 		double bm_force = 6.0;
 		double target_curvature = .15;
 		//Set all the spring stiffness variables
-		double epithelial_epithelial_stiffness = 15.0; //Epithelial-epithelial spring connections
-		double epithelial_nonepithelial_stiffness = 15.0; //Epithelial-non-epithelial spring connections
+		double epithelial_epithelial_stiffness = 5.0; //Epithelial-epithelial spring connections
+		double epithelial_nonepithelial_stiffness = 5.0; //Epithelial-non-epithelial spring connections
 		double nonepithelial_nonepithelial_stiffness = 15.0; //Non-epithelial-non-epithelial spring connections
-		double membrane_stiffness = 30.0; //Stiffnes of mebrane to membrane spring connections
+		double membrane_stiffness = 25.0; //Stiffnes of mebrane to membrane spring connections
 		//Set the stiffness ratio for Paneth cells to stem cells. This is the
 		double stiffness_ratio = 4.5;
 		//Start off with a mesh
@@ -167,7 +167,6 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		simulator.SetOutputDirectory("TestBasicTestTubeCrypt");
         simulator.SetEndTime(end_time);
         simulator.SetDt(dt);
-
         simulator.SetSamplingTimestepMultiple(sampling_multiple);
 
         /* Add an anoikis-based cell killer. */
@@ -196,6 +195,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 		//mutate a cell so it does not die from anoikis
         boost::shared_ptr<AbstractCellProperty> p_state_mutated = CellPropertyRegistry::Instance()->Get<TransitCellAnoikisResistantMutationState>();
+        //"mutate" a differentiated cell if it is under the monolayer
         boost::shared_ptr<AbstractCellProperty> p_membrane_mutated = CellPropertyRegistry::Instance()->Get<DifferentiatedMembraneState>();
 
         for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population.Begin();
@@ -227,10 +227,11 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 	    		//if the cell doesn't have any ghost neighbours, then it's not a monolayer, so convert back to differntiated type
 	    		if (real_neighbour_count == neighbouring_node_indices.size())
 	    		{
-	    			std::cout <<"Changed "<< node_index << std::endl;
+	    			//std::cout <<"Changed "<< node_index << std::endl;
 	    			cell_iter->SetCellProliferativeType(p_diff_type);
 	    		} else {
 	    		//loop to make the membrane cells
+	    			//loop through neighbours
 		    		for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
 		         			iter != neighbouring_node_indices.end();
 		         				++iter)
@@ -238,23 +239,19 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		    			if (real_indices_set.find(*iter) != real_indices_set.end()) //make sure the node is not a ghost first
 		    			{
 		    				CellPtr neighbour = cell_population.GetCellUsingLocationIndex(*iter);
+		    				//check if the cell type is differentiated, then if it is, add the "mutation"
 			    			if (neighbour->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
 			    			{
 			    				//add mutation
 			    				neighbour->SetMutationState(p_membrane_mutated);
 			    			}
 		    			}
-		    			//check if the cell type is differentiated, then if it is, add the "mutation"
-		    			
 		    		}
 		    	}
 	    	}
-
         }
 
         simulator.Solve();
-
-
 
 	};
 };
