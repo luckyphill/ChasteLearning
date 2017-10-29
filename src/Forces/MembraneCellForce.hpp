@@ -7,6 +7,7 @@
 #include "AbstractForce.hpp"
 #include "MeshBasedCellPopulation.hpp"
 #include "DifferentiatedCellProliferativeType.hpp"
+#include "DifferentiatedMembraneState.hpp"
 
 #include <cmath>
 #include <list>
@@ -29,10 +30,12 @@ class MembraneCellForce : public AbstractForce<2>
 private :
 
     /** Parameter that defines the stiffness of the basement membrane */
-    double mBasementMembraneParameter;
+    double mBasementMembraneTorsionalStiffness;
 
     /** Target curvature for the layer of cells */
-    double mTargetCurvature;
+    double mTargetCurvatureStemStem;
+    double mTargetCurvatureStemTrans;
+    double mTargetCurvatureTransTrans;
 
     /** Needed for serialization. */
     friend class boost::serialization::access;
@@ -48,9 +51,17 @@ private :
         // If Archive is an output archive, then '&' resolves to '<<'
         // If Archive is an input archive, then '&' resolves to '>>'
         archive & boost::serialization::base_object<AbstractForce<2> >(*this);
-        archive & mBasementMembraneParameter;
-        archive & mTargetCurvature;
+        archive & mBasementMembraneTorsionalStiffness;
+        archive & mTargetCurvatureStemStem;
+        archive & mTargetCurvatureStemTrans;
+        archive & mTargetCurvatureTransTrans;
     }
+
+protected:
+    // A vector of node indices that are the membrane
+    // Each node in order must be connected to the next
+    // This assume that the lumen is always to the left if you're looking in the direction of the next cell
+    std::vector<unsigned> mMembraneIndices;
 
 public :
 
@@ -64,6 +75,8 @@ public :
      */
     ~MembraneCellForce();
 
+    void SetMembraneIndices(std::vector<unsigned> membraneIndices);
+
     /**
      * Pure virtual, must implement
      */
@@ -76,19 +89,19 @@ public :
 
     /* Set method for Basement Membrane Parameter
      */
-    void SetBasementMembraneParameter(double basementMembraneParameter);
+    void SetBasementMembraneTorsionalStiffness(double basementMembraneTorsionalStiffness);
 
     /* Get method for Basement Membrane Parameter
      */
-    double GetBasementMembraneParameter();
+    double GetBasementMembraneTorsionalStiffness();
 
     /* Value of Target Curvature in epithelial layer */
-    void SetTargetCurvature(double targetCurvature = 0.0);
+    void SetTargetCurvatures(double targetCurvatureStemStem, double targetCurvatureStemTrans, double targetCurvatureTransTrans);
 
     /* Get method for Target Curvature
      *
      */
-    double GetTargetCurvature();
+    double GetTargetCurvatures(bool stem, bool trans);
 
     /* Removing duplicated entries of a vector
      */
@@ -98,6 +111,10 @@ public :
      */
     bool DoesElementContainGhostNodes(AbstractCellPopulation<2>& rCellPopulation, unsigned elementIndex);
 
+    double GetAngleFromTriplet(AbstractCellPopulation<2>& rCellPopulation,
+                                                            c_vector<double, 2> leftNode,
+                                                            c_vector<double, 2> centreNode,
+                                                            c_vector<double, 2> rightNode);
     /* Finding the connected pairs of epithelial-tissue nodes
      */
     std::vector<c_vector<unsigned, 2> > GetEpithelialGelPairs(AbstractCellPopulation<2>& rCellPopulation);
