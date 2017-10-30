@@ -53,8 +53,8 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 		double ring_width = 0.9;
 
-		double dt = 0.01;
-		double end_time = 5;
+		double dt = 0.005;
+		double end_time = 10;
 		double sampling_multiple = 10;
 		//Basement membrane force parameters
 		double bm_force = 6.0;
@@ -62,12 +62,12 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		//Set all the spring stiffness variables
 		double epithelial_epithelial_stiffness = 5.0; //Epithelial-epithelial spring connections
 		double epithelial_nonepithelial_stiffness = 5.0; //Epithelial-non-epithelial spring connections
-		double nonepithelial_nonepithelial_stiffness = 15.0; //Non-epithelial-non-epithelial spring connections
-		double membrane_stiffness = 25.0; //Stiffnes of mebrane to membrane spring connections
-		double torsional_stiffness = 10.0;
-		double targetCurvatureStemStem = 1.0;
-		double targetCurvatureStemTrans = 1.0;
-		double targetCurvatureTransTrans = 1.0;
+		double nonepithelial_nonepithelial_stiffness = 10.0; //Non-epithelial-non-epithelial spring connections
+		double membrane_stiffness = 15.0; //Stiffnes of mebrane to membrane spring connections
+		double torsional_stiffness = 15.0;
+		double targetCurvatureStemStem = 1/circle_radius;
+		double targetCurvatureStemTrans = 1/(2*circle_radius);
+		double targetCurvatureTransTrans = 0;
 		//Set the stiffness ratio for Paneth cells to stem cells. This is the
 		double stiffness_ratio = 4.5;
 		//Start off with a mesh
@@ -338,6 +338,10 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
         p_membrane_force->SetMembraneIndices(membrane_indices);
         p_membrane_force->SetBasementMembraneTorsionalStiffness(torsional_stiffness);
         p_membrane_force->SetTargetCurvatures(targetCurvatureStemStem, targetCurvatureStemTrans, targetCurvatureTransTrans);
+        simulator.AddForce(p_membrane_force);
+
+        //p_membrane_force->AddForceContribution(cell_population);
+
         simulator.Solve();
 
 	};

@@ -9,6 +9,9 @@
 #include "DifferentiatedCellProliferativeType.hpp"
 #include "DifferentiatedMembraneState.hpp"
 
+#include "TransitCellProliferativeType.hpp"
+#include "StemCellProliferativeType.hpp"
+
 #include <cmath>
 #include <list>
 #include <fstream>
@@ -77,6 +80,11 @@ public :
 
     void SetMembraneIndices(std::vector<unsigned> membraneIndices);
 
+    double GetTargetAngle(AbstractCellPopulation<2>& rCellPopulation, CellPtr centre_cell,
+                                                                        c_vector<double, 2> leftCell,
+                                                                        c_vector<double, 2> centreCell,
+                                                                        c_vector<double, 2> rightCell);
+
     /**
      * Pure virtual, must implement
      */
@@ -101,7 +109,7 @@ public :
     /* Get method for Target Curvature
      *
      */
-    double GetTargetCurvatures(bool stem, bool trans);
+    double GetTargetCurvature(bool stem, bool trans);
 
     /* Removing duplicated entries of a vector
      */

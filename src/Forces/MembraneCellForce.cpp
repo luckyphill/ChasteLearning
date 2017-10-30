@@ -50,7 +50,7 @@ void MembraneCellForce::SetTargetCurvatures(double targetCurvatureStemStem, doub
 }
 
 
-double MembraneCellForce::GetTargetCurvatures(bool stem, bool trans)
+double MembraneCellForce::GetTargetCurvature(bool stem, bool trans)
 {	
 	//for a cell pair, enter true or false if either of them are attached to stem cells or transit cells
 	//to determine appropriate target curvature
@@ -86,15 +86,27 @@ double MembraneCellForce::GetAngleFromTriplet(AbstractCellPopulation<2>& rCellPo
 	// Given three node which we know are neighbours, determine the angle their centres make
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
-	c_vector<double, 2> vector_AB = p_tissue->rGetMesh().GetVectorFromAtoB(leftNode,centreNode);
+	c_vector<double, 2> vector_AB = p_tissue->rGetMesh().GetVectorFromAtoB(centreNode,leftNode);
 	c_vector<double, 2> vector_AC = p_tissue->rGetMesh().GetVectorFromAtoB(centreNode,rightNode);
 
 	double inner_product_AB_AC = vector_AB[0] * vector_AC[0] + vector_AB[1] * vector_AC[1];
-
+	//std::cout << "Inner Product: " << inner_product_AB_AC << std::endl;
 	double length_AB = norm_2(vector_AB);
 	double length_AC = norm_2(vector_AC);
+	//std::cout << "Length C-L: " << length_AB << "\nLength C-R: " << length_AC << std::endl;
 
-	double angle = acos(inner_product_AB_AC / (length_AB * length_AC));
+	double acos_arg = inner_product_AB_AC / (length_AB * length_AC);
+
+	//std::cout << "Argument: " << acos_arg << setprecision(17) << std::endl;
+
+	double angle = acos(acos_arg);
+	// Occasionally the argument steps out of the bounds for acos, for instance -1.0000000000000002
+	// This is enough to make the acos function return nans
+	// This line of code is not ideal, but catches the error for the time being
+	if (isnan(angle) && acos_arg > -1.00000000000005) 
+	{
+		return acos(-1);
+	}
 	return angle;
 	// Need to orient the vectors with respect to the lumen so we know which direction
 	// THis is not done here, so must be done after
@@ -108,14 +120,14 @@ double MembraneCellForce::GetAngleFromTriplet(AbstractCellPopulation<2>& rCellPo
 */
 
 double MembraneCellForce::FindParametricCurvature(AbstractCellPopulation<2>& rCellPopulation,
-															c_vector<double, 2> leftMidpoint,
-															c_vector<double, 2> centreMidpoint,
-															c_vector<double, 2> rightMidpoint)
+															c_vector<double, 2> leftCell,
+															c_vector<double, 2> centreCell,
+															c_vector<double, 2> rightCell)
 {
 	//Get the relevant vectors (all possible differences)
-	c_vector<double, 2> left_to_centre = rCellPopulation.rGetMesh().GetVectorFromAtoB(leftMidpoint, centreMidpoint);
-	c_vector<double, 2> centre_to_right = rCellPopulation.rGetMesh().GetVectorFromAtoB(centreMidpoint, rightMidpoint);
-	c_vector<double, 2> left_to_right = rCellPopulation.rGetMesh().GetVectorFromAtoB(leftMidpoint, rightMidpoint);
+	c_vector<double, 2> left_to_centre = rCellPopulation.rGetMesh().GetVectorFromAtoB(leftCell, centreCell);
+	c_vector<double, 2> centre_to_right = rCellPopulation.rGetMesh().GetVectorFromAtoB(centreCell, rightCell);
+	c_vector<double, 2> left_to_right = rCellPopulation.rGetMesh().GetVectorFromAtoB(leftCell, rightCell);
 
 	// Firstly find the parametric intervals
 	double left_s = sqrt(pow(left_to_centre[0],2) + pow(left_to_centre[1],2));
@@ -138,6 +150,71 @@ double MembraneCellForce::FindParametricCurvature(AbstractCellPopulation<2>& rCe
 }
 
 
+double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulation, CellPtr centre_cell,
+																		c_vector<double, 2> leftCell,
+																		c_vector<double, 2> centreCell,
+																		c_vector<double, 2> rightCell)
+{
+	// Returns the angle that we're aiming for
+	// At the moment, it doesn't handle membrane cells with both types separately, but treats them like  they're attached to transit cells
+	MeshBasedCellPopulation<2>* cell_population = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
+
+	bool contact_with_stem = false;
+	bool contact_with_trans = false;
+
+	//std::cout << "About to assign centre cell index" <<std::endl;
+	unsigned centre_cell_index = cell_population->GetLocationIndexUsingCell(centre_cell);
+	//std::cout << "Successfully assigned centre cell index" <<std::endl;
+	//std::cout << "About to get neighbours" <<std::endl;
+	std::set<unsigned> neighbouring_node_indices = rCellPopulation.GetNeighbouringNodeIndices(centre_cell_index);
+	//std::cout << "Successfully got neighbours" <<std::endl;
+
+	//std::cout << "About to loop neighbours" <<std::endl;
+	for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+	         			iter != neighbouring_node_indices.end();
+	         				++iter)
+	{
+		if (!cell_population->IsGhostNode(*iter))
+		{		
+			CellPtr neighbour = cell_population->GetCellUsingLocationIndex(*iter);
+			//check if the cell type is differentiated, then if it is, add the "mutation"
+			if (neighbour->GetCellProliferativeType()->IsType<TransitCellProliferativeType>())
+			{
+				contact_with_trans = true;
+			}
+			if (neighbour->GetCellProliferativeType()->IsType<StemCellProliferativeType>())
+			{
+				contact_with_stem = true;
+			}
+		}
+	}
+	//std::cout << "Successfully looped neighbours" <<std::endl;
+
+	assert((contact_with_stem || contact_with_trans));
+
+	//double target_curvature = GetTargetCurvature(contact_with_stem, contact_with_trans);
+
+	double target_angle = M_PI; // Assume we're dealing with only transit cells for the now
+
+	c_vector<double, 2> vector_AB = cell_population->rGetMesh().GetVectorFromAtoB(centreCell,leftCell);
+	c_vector<double, 2> vector_AC = cell_population->rGetMesh().GetVectorFromAtoB(centreCell,rightCell);
+
+	double length_AB = norm_2(vector_AB);
+	double length_AC = norm_2(vector_AC);
+
+
+	if (contact_with_stem && !contact_with_trans)
+	{
+		//target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
+		target_angle = 3.0;
+	}
+
+	// if (contact_with_stem && contact_with_trans)
+	// {
+	// 	target_angle = acos(length_AC * target_curvature) + acos(length_AB * target_curvature);
+	// }
+	return target_angle;
+}
 
 //Method overriding the virtual method for AbstractForce. The crux of what really needs to be done.
 void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPopulation)
@@ -150,57 +227,107 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 	// epithelial node, and the direction in which it acts
 	for (unsigned i=0; i<mMembraneIndices.size()-2; i++)
 	{
+		
 		unsigned left_node = mMembraneIndices[i];
 		unsigned centre_node = mMembraneIndices[i+1];
 		unsigned right_node = mMembraneIndices[i+2];
+		//std::cout << "\nNode: " << centre_node  <<std::endl;
 
+		//std::cout << "About to assign cells" <<std::endl;
 		CellPtr left_cell = p_tissue->GetCellUsingLocationIndex(left_node);
 		CellPtr centre_cell = p_tissue->GetCellUsingLocationIndex(centre_node);
 		CellPtr right_cell = p_tissue->GetCellUsingLocationIndex(right_node);
+		//std::cout << "Successfully assigned cells" <<std::endl;
 
 		c_vector<double, 2> left_location = p_tissue->GetLocationOfCellCentre(left_cell);
 		c_vector<double, 2> right_location = p_tissue->GetLocationOfCellCentre(right_cell);
 		c_vector<double, 2> centre_location = p_tissue->GetLocationOfCellCentre(centre_cell);
 
+		
+		//std::cout << "About to get angle and curvature" <<std::endl;
 		double current_angle = GetAngleFromTriplet(rCellPopulation, left_location, centre_location, right_location);
-		double target_angle = 0.0;
+		double current_curvature = FindParametricCurvature(rCellPopulation, left_location, centre_location, right_location);
+		//std::cout << "Successfully got angle and curvature" << std::endl;
+		
+		if (abs(current_curvature) < 1e-5)
+		{
+			// Close enough
+			current_curvature = 0.0;
+			// We need to use the sign of the curvature to determine the angle correctly
+			// Extrememly small curvatures due to precision errors might play havock with this
+		}
 
-		double torque = basementMembraneTorsionalStiffness * abs(current_angle - target_angle);
+		// The method of calculating the angle is not oriented by the lumen, so need to adjust
+		if (current_curvature < 0)
+		{
+			if (centre_node == 507)
+			{
+				std::cout << "Changing current angle\nStarting: " << current_angle << std::endl;
+			}
+			current_angle = 2 * M_PI - current_angle;
+			if (centre_node == 507)
+			{
+				std::cout << "Ending: " << current_angle << std::endl;
+			}
+		}
 
-		/*
-		 * Get the direction of force applied to each node
-		 * Make a force vector
-		 * Apply force to each node
-		 */
+		//std::cout << "About to get target angle"  <<std::endl;
+		double target_angle = GetTargetAngle(rCellPopulation, centre_cell, left_location, centre_location, right_location);
+		//std::cout << "Successfully got target angle"  <<std::endl;
+
+		//std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
+		//std::cout << "Left Node: " << left_location[0] << ", " << left_location[1] << "\nCentre Node: " << centre_location[0]<< ", " << centre_location[1] << "\nRight Node: " << right_location[0]<< ", " << right_location[1] << std::endl;
+
+		double torque = mBasementMembraneTorsionalStiffness * (current_angle - target_angle); // Positive torque means force points into lumen
+		//std::cout << "Torque: " << torque << std::endl;
+		c_vector<double, 2> vector_CL = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,left_location);
+		c_vector<double, 2> vector_CR = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,right_location);
+		c_vector<double, 2> vector_LR = p_tissue->rGetMesh().GetVectorFromAtoB(left_location,right_location); // Used for determining where lumen is
 
 
 
-   		//CellPtr p_cell_epithelial = p_tissue->GetCellUsingLocationIndex(epithelial_node_index);
-   		//assert(p_cell_epithelial->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>() == false);
+		double length_CL = norm_2(vector_CL);
+		double length_CR = norm_2(vector_CR);
 
-		//CellPtr p_cell_gel = p_tissue->GetCellUsingLocationIndex(gel_node_index);
-		//assert(p_cell_gel->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>() == true);
+		// Determine the force vectors applied to the left and right nodes
+		double forceMagnitudeLeft = length_CL * torque;
+		double forceMagnitudeRight = length_CR * torque;
+		//std::cout << "Force Magnitude: " << forceMagnitudeLeft << std::endl;
 
-		//c_vector<double, 2> epithelial_location = rCellPopulation.GetNode(epithelial_node_index)->rGetLocation();
-		//c_vector<double, 2> gel_location = rCellPopulation.GetNode(gel_node_index)->rGetLocation();
+		c_vector<double, 2> forceDirectionLeft;
+		c_vector<double, 2> forceDirectionRight;
 
-		// The force due to the basal lamina acts along the spring connecting the epithelial and gel nodes, G->E direction
-		//c_vector<double, 2> curvature_force_direction = p_tissue->rGetMesh().GetVectorFromAtoB(gel_location, epithelial_location);
+		// Use the CL and CR vectors to determine the line that the force will act on
+		// If we have a vector (a, b), then the vector (b, -a) is perpendicular and creates a clockwise rotation when added to the end of (a,b)
+		// while (-b, a) creates an anticlockwise rotation
+		// forceDirectionLeft will always end up pointing into the lumen, and forceDirectionRight will always point out
+		// Given we have decided that the actual direction of the force is encoded in the sign on the torque this is all we need to do
+		forceDirectionLeft[0] = vector_CL[1] / length_CL;
+		forceDirectionLeft[1] = - vector_CL[0] / length_CL;
 
-		//double distance_between_nodes = norm_2(curvature_force_direction);
-		//assert(distance_between_nodes > 0);
-		//assert(!isnan(distance_between_nodes));
+		forceDirectionRight[0] = - vector_CR[1] / length_CR;
+		forceDirectionRight[1] = vector_CR[0] / length_CR;
 
-		//curvature_force_direction /= distance_between_nodes;
+		c_vector<double, 2> forceVectorLeft = forceMagnitudeLeft * forceDirectionLeft;
+		c_vector<double, 2> forceVectorRight = forceMagnitudeRight * forceDirectionRight;
 
-		//double curvature = GetCurvatureFromNodePair(rCellPopulation, epithelial_node_index, gel_node_index);
+		if (centre_node == 507)
+		{
+			std::cout << "\nNode: " << centre_node  <<std::endl;
+			std::cout << "Torque: " << torque << std::endl;
+			std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
+			std::cout<< "Curvature: " << current_curvature << std::endl;
+			std::cout << "forceVectorLeft: " << forceVectorLeft[0]<< ", " << forceVectorLeft[1] <<std::endl;
+			std::cout << "forceMagnitudeLeft: " << forceMagnitudeLeft <<std::endl;
+			std::cout << "forceVectorRight: " << forceVectorRight[0]<< ", " << forceVectorRight[1] <<std::endl;
+			std::cout << "forceMagnitudeRight: " << forceMagnitudeRight <<std::endl;
 
-		//double basement_membrane_parameter = GetBasementMembraneParameter();
+		}
 
-		//c_vector<double, 2> force_due_to_basement_membrane = basement_membrane_parameter*curvature*curvature_force_direction;
-
-		// Add the force due to the basal lamina to the forces acting on that epithelial node
-		//rCellPopulation.GetNode(epithelial_node_index)->AddAppliedForceContribution(force_due_to_basement_membrane);
+		//std::cout << "About to add force contribution"  <<std::endl;
+		rCellPopulation.GetNode(left_node)->AddAppliedForceContribution(forceVectorLeft);
+		rCellPopulation.GetNode(right_node)->AddAppliedForceContribution(forceVectorRight);
+		//std::cout << "Successfully added force contribution"  <<std::endl;
 	}
 
 }
