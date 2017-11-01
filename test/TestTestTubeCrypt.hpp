@@ -30,7 +30,7 @@
 #include "TransitCellAnoikisResistantMutationState.hpp"
 #include "DifferentiatedMembraneState.hpp" //not a very good name, supposed to be quick and dirty way to create a "membrane cell" by mutating a differentiated cell
 #include "MembraneCellForce.hpp" // A force to restore the membrane to it's preferred shape
-
+#include "NoCellCycleModel.hpp"
 
 class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 {
@@ -40,6 +40,27 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		unsigned cells_up = 30;
 		unsigned cells_across = 30;
 		unsigned ghosts = 4;
+
+		double dt = 0.005;
+		double end_time = 100;
+		double sampling_multiple = 100;
+
+		//Set all the spring stiffness variables
+		double epithelialStiffness = 15.0; //Epithelial-epithelial spring connections
+		double membraneStiffness = 20.0; //Stiffness of membrane to membrane spring connections
+		double stromalStiffness = 15.0;
+
+		double epithelialMembraneStiffness = 15.0; //Epithelial-non-epithelial spring connections
+		double membraneStromalStiffness = 5.0; //Non-epithelial-non-epithelial spring connections
+		double stromalEpithelialStiffness = 10.0;
+
+		double torsional_stiffness = 25.0;
+		double stiffness_ratio = 4.5; // For paneth cells
+		
+		double targetCurvatureStemStem = 1/5;
+		double targetCurvatureStemTrans = 0; // Not implemented properly, so keep it the same as TransTrans for now
+		double targetCurvatureTransTrans = 0;
+
 		double lumen_left_edge = 6.5;
 		double lumen_right_edge = 13.5;
 		double lumen_bottom = 4.5;
@@ -55,29 +76,9 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 		double ring_width = 0.9;
 
-		double dt = 0.01;
-		double end_time = 100;
-		double sampling_multiple = 10;
-		//Basement membrane force parameters
-		double bm_force = 6.0;
-		double target_curvature = .15;
-		//Set all the spring stiffness variables
-		double epithelial_epithelial_stiffness = 10.0; //Epithelial-epithelial spring connections
-		double epithelial_nonepithelial_stiffness = 5.0; //Epithelial-non-epithelial spring connections
-		double nonepithelial_nonepithelial_stiffness = 10.0; //Non-epithelial-non-epithelial spring connections
-		double membrane_stiffness = 10.0; //Stiffnes of mebrane to membrane spring connections
-		double torsional_stiffness = 25.0;
-		double targetCurvatureStemStem = 1/circle_radius;
-		double targetCurvatureStemTrans = 1/(2*circle_radius);
-		double targetCurvatureTransTrans = 0;
-		//Set the stiffness ratio for Paneth cells to stem cells. This is the
-		double stiffness_ratio = 4.5;
 		//Start off with a mesh
 		HoneycombMeshGenerator generator(cells_up, cells_across, ghosts);
 		MutableMesh<2,2>* p_mesh = generator.GetMesh();
-
-	
-
 
 		//Sort through the indices and decide which ones are ghost nodes
 		std::vector<unsigned> initial_real_indices = generator.GetCellLocationIndices();
@@ -190,17 +191,20 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		MAKE_PTR(EpithelialLayerLinearSpringForce<2>, p_spring_force);
 		p_spring_force->SetCutOffLength(1.5);
 		//Set the spring stiffnesses
-		p_spring_force->SetEpithelialEpithelialSpringStiffness(epithelial_epithelial_stiffness);
-		p_spring_force->SetEpithelialNonepithelialSpringStiffness(epithelial_nonepithelial_stiffness);
-		p_spring_force->SetNonepithelialNonepithelialSpringStiffness(nonepithelial_nonepithelial_stiffness);
-		p_spring_force->SetMembraneSpringStiffness(membrane_stiffness);
+		p_spring_force->SetEpithelialSpringStiffness(epithelialStiffness);
+		p_spring_force->SetMembraneSpringStiffness(membraneStiffness);
+		p_spring_force->SetStromalSpringStiffness(stromalStiffness);
+		p_spring_force->SetEpithelialMembraneSpringStiffness(epithelialMembraneStiffness);
+		p_spring_force->SetMembraneStromalSpringStiffness(membraneStromalStiffness);
+		p_spring_force->SetStromalEpithelialSpringStiffness(stromalEpithelialStiffness);
+
 		p_spring_force->SetPanethCellStiffnessRatio(stiffness_ratio);
 		simulator.AddForce(p_spring_force);
 
 		//mutate a cell so it does not die from anoikis
         boost::shared_ptr<AbstractCellProperty> p_state_mutated = CellPropertyRegistry::Instance()->Get<TransitCellAnoikisResistantMutationState>();
         //"mutate" a differentiated cell if it is under the monolayer
-        boost::shared_ptr<AbstractCellProperty> p_membrane_mutated = CellPropertyRegistry::Instance()->Get<DifferentiatedMembraneState>();
+        boost::shared_ptr<AbstractCellProperty> p_membrane = CellPropertyRegistry::Instance()->Get<MembraneCellProliferativeType>();
 
 
 
@@ -249,8 +253,9 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		    				//check if the cell type is differentiated, then if it is, add the "mutation"
 			    			if (neighbour->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
 			    			{
-			    				//add mutation
-			    				neighbour->SetMutationState(p_membrane_mutated);
+								NoCellCycleModel* p_no_cycle_model = new NoCellCycleModel();
+								neighbour->SetCellProliferativeType(p_membrane);
+								neighbour->SetCellCycleModel(p_no_cycle_model);
 			    			}
 		    			}
 		    		}

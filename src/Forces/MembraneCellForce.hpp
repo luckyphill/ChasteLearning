@@ -7,10 +7,10 @@
 #include "AbstractForce.hpp"
 #include "MeshBasedCellPopulation.hpp"
 #include "DifferentiatedCellProliferativeType.hpp"
-#include "DifferentiatedMembraneState.hpp"
 
 #include "TransitCellProliferativeType.hpp"
 #include "StemCellProliferativeType.hpp"
+#include "MembraneCellProliferativeType.hpp"
 
 #include <cmath>
 #include <list>
@@ -98,11 +98,6 @@ public :
 
     /* Value of Target Curvature in epithelial layer */
     void SetTargetCurvatures(double targetCurvatureStemStem, double targetCurvatureStemTrans, double targetCurvatureTransTrans);
-
-    /* Get method for Target Curvature
-     *
-     */
-    double GetTargetCurvature(bool stem, bool trans);
 
     /* Removing duplicated entries of a vector
      */

@@ -45,27 +45,6 @@ void MembraneCellForce::SetTargetCurvatures(double targetCurvatureStemStem, doub
 }
 
 
-double MembraneCellForce::GetTargetCurvature(bool stem, bool trans)
-{	
-	//for a cell pair, enter true or false if either of them are attached to stem cells or transit cells
-	//to determine appropriate target curvature
-	assert((stem || trans)); //one of the options must be true
-	if (stem && !trans)
-	{
-		return mTargetCurvatureStemStem;
-	}
-	if (!stem && trans)
-	{
-		return mTargetCurvatureTransTrans;
-	}
-	if (stem && trans)
-	{
-		return mTargetCurvatureStemTrans;
-	}
-	return 0;
-}
-
-
 /*
  * A method to find all the pairs of connections between healthy epithelial cells and labelled gel cells.
  * Returns a vector of node pairings, without repeats. The first of each pair is the epithelial node index,
@@ -85,14 +64,10 @@ double MembraneCellForce::GetAngleFromTriplet(AbstractCellPopulation<2>& rCellPo
 	c_vector<double, 2> vector_AC = p_tissue->rGetMesh().GetVectorFromAtoB(centreNode,rightNode);
 
 	double inner_product_AB_AC = vector_AB[0] * vector_AC[0] + vector_AB[1] * vector_AC[1];
-	//std::cout << "Inner Product: " << inner_product_AB_AC << std::endl;
 	double length_AB = norm_2(vector_AB);
 	double length_AC = norm_2(vector_AC);
-	//std::cout << "Length C-L: " << length_AB << "\nLength C-R: " << length_AC << std::endl;
 
 	double acos_arg = inner_product_AB_AC / (length_AB * length_AC);
-
-	//std::cout << "Argument: " << acos_arg << setprecision(17) << std::endl;
 
 	double angle = acos(acos_arg);
 	// Occasionally the argument steps out of the bounds for acos, for instance -1.0000000000000002
@@ -157,14 +132,9 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 	bool contact_with_stem = false;
 	bool contact_with_trans = false;
 
-	//std::cout << "About to assign centre cell index" <<std::endl;
 	unsigned centre_cell_index = cell_population->GetLocationIndexUsingCell(centre_cell);
-	//std::cout << "Successfully assigned centre cell index" <<std::endl;
-	//std::cout << "About to get neighbours" <<std::endl;
 	std::set<unsigned> neighbouring_node_indices = rCellPopulation.GetNeighbouringNodeIndices(centre_cell_index);
-	//std::cout << "Successfully got neighbours" <<std::endl;
 
-	//std::cout << "About to loop neighbours" <<std::endl;
 	for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
 	         			iter != neighbouring_node_indices.end();
 	         				++iter)
@@ -186,13 +156,10 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 			}
 		}
 	}
-	//std::cout << "Successfully looped neighbours" <<std::endl;
 
 	//assert((contact_with_stem || contact_with_trans));
 
-	//double target_curvature = GetTargetCurvature(contact_with_stem, contact_with_trans);
-
-	double target_angle = M_PI; // Assume we're dealing with only transit cells for the now
+	double target_angle = M_PI; // Assume we're dealing with transit cells as default
 
 	c_vector<double, 2> vector_AB = cell_population->rGetMesh().GetVectorFromAtoB(centreCell,leftCell);
 	c_vector<double, 2> vector_AC = cell_population->rGetMesh().GetVectorFromAtoB(centreCell,rightCell);
@@ -203,14 +170,10 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 
 	if (contact_with_stem && !contact_with_trans)
 	{
-		target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
-		//target_angle = 3.0;
+		//target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
+		target_angle = 2.8;
 	}
 
-	// if (contact_with_stem && contact_with_trans)
-	// {
-	// 	target_angle = acos(length_AC * target_curvature) + acos(length_AB * target_curvature);
-	// }
 	return target_angle;
 }
 
@@ -220,6 +183,7 @@ std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulati
 	MeshBasedCellPopulation<2>* cell_population = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
 	unsigned starting_membrane_index = 0;
+	unsigned starting_membrane_index_cylindrical = 0;
     // Finding the first membrane cell
     for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population->Begin();
          cell_iter != cell_population->End();
@@ -229,8 +193,9 @@ std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulati
     	double x = cell_population->GetLocationOfCellCentre(*cell_iter)[0];
     	
     	// If we've got a membrane cell, check if it's at the end we want
-    	if (cell_iter->GetMutationState()->IsType<DifferentiatedMembraneState>())
+    	if (cell_iter->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>())
     	{
+    		starting_membrane_index_cylindrical = node_index; // Grab any membrane cell if we are using a cylindrical mesh
     		// Loop through neighbours and count number of membrane neighbours, if it's only one, then we have an end cell
     		std::set<unsigned> neighbouring_node_indices = cell_population->GetNeighbouringNodeIndices(node_index);
     		unsigned membrane_cell_neighbour_count=0;
@@ -241,7 +206,7 @@ std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulati
     			//count the number of membrane neighbours
     			if (!cell_population->IsGhostNode(*iter))
     			{
-    				if (cell_population->GetCellUsingLocationIndex(*iter)->GetMutationState()->IsType<DifferentiatedMembraneState>())
+    				if (cell_population->GetCellUsingLocationIndex(*iter)->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>())
 	    			{
 	    				membrane_cell_neighbour_count +=1;
 	    			}
@@ -256,6 +221,14 @@ std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulati
     	} 
     }
 
+
+    if (!starting_membrane_index)
+    {
+    	// We're assuming if no index gets assigned, then we're dealing with a cylindrical mesh
+    	// This won't be correct in 100% of cases, but it's highly unlikely that node 0 will be anything other than a ghost node
+    	// This is a temporary measure until I can work out how to test for the type of mesh we've
+    	starting_membrane_index = starting_membrane_index_cylindrical;
+    }
     // With the starting membrane index, we can now build the membrane as a vector of indices
     std::set<unsigned> membrane_indices_set;
     std::vector<unsigned> membrane_indices;
@@ -279,7 +252,7 @@ std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulati
 	    	if (!cell_population->IsGhostNode(*iter))
 	    	{
 	    		CellPtr neighbour_cell = cell_population->GetCellUsingLocationIndex(*iter);
-	    		if (neighbour_cell->GetMutationState()->IsType<DifferentiatedMembraneState>() && membrane_indices_set.find(*iter) == membrane_indices_set.end())
+	    		if (neighbour_cell->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>() && membrane_indices_set.find(*iter) == membrane_indices_set.end())
 		    	{
         			membrane_indices_set.insert(*iter);
         			membrane_indices.push_back(*iter);
@@ -303,6 +276,8 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 	// Need to determine the restoring force on the membrane putting it back to it's preferred shape
 	std::vector<unsigned> membraneIndices = GetMembraneIndices(rCellPopulation);
 
+	//std::cout << "The number of membrane cells is: " << membraneIndices.size() << std::endl;
+
 	// We loop over the epithelial-gel node pairs to find the force acting on that
 	// epithelial node, and the direction in which it acts
 	for (unsigned i=0; i<membraneIndices.size()-2; i++)
@@ -312,13 +287,16 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 		unsigned centre_node = membraneIndices[i+1];
 		unsigned right_node = membraneIndices[i+2];
 
+		//std::cout << "About to set cells MembraneCellForce" <<std::endl;
 		CellPtr left_cell = p_tissue->GetCellUsingLocationIndex(left_node);
 		CellPtr centre_cell = p_tissue->GetCellUsingLocationIndex(centre_node);
 		CellPtr right_cell = p_tissue->GetCellUsingLocationIndex(right_node);
+		//std::cout << "Successfully set cells MembraneCellForce" <<std::endl;
 
 		c_vector<double, 2> left_location = p_tissue->GetLocationOfCellCentre(left_cell);
 		c_vector<double, 2> right_location = p_tissue->GetLocationOfCellCentre(right_cell);
 		c_vector<double, 2> centre_location = p_tissue->GetLocationOfCellCentre(centre_cell);
+		
 
 		
 		//std::cout << "About to get angle and curvature" <<std::endl;
