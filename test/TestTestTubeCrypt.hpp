@@ -1,6 +1,8 @@
-//Playing around with generating cells.
-//Attempting to manually generate cells
 
+/* CREATED BY: Phillip Brown
+ * A Chaste test that approximates a crypt with stem cells and transit amplifying cells
+ * A membrane force similar to that used by SJD is attempted
+ */
 
 #include <cxxtest/TestSuite.h> //Needed for all test files
 #include "CellBasedSimulationArchiver.hpp" //Needed if we would like to save/load simulations
