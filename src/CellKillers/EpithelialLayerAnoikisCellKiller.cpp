@@ -9,9 +9,10 @@
  */
 
 /*
- * MODIFIED BY PHILLIP BROWN 18/10/2017
+ * MODIFIED BY PHILLIP BROWN 1/11/2017
  * Added in a check for an anoikis resistant mutation, which stops a cell from dying when it
  * detaches from the non epithelial region i.e. the basement layer of cells
+ * Also modified to check if cell is in contact with MembraneCellProliferativeType
  */
 
 #include "EpithelialLayerAnoikisCellKiller.hpp"
@@ -21,6 +22,7 @@
 #include "NodeBasedCellPopulation.hpp"
 #include "PanethCellMutationState.hpp"
 #include "TransitCellAnoikisResistantMutationState.hpp"
+#include "MembraneCellProliferativeType.hpp"
 
 EpithelialLayerAnoikisCellKiller::EpithelialLayerAnoikisCellKiller(AbstractCellPopulation<2>* pCellPopulation)
     : AbstractCellKiller<2>(pCellPopulation),
@@ -121,7 +123,7 @@ bool EpithelialLayerAnoikisCellKiller::HasCellPoppedUp(unsigned nodeIndex)
 				neighbour_iter != neighbours.end();
 				++neighbour_iter)
 		{
-			if ( (!p_tissue->IsGhostNode(*neighbour_iter))&&(p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>()) )
+			if ( (!p_tissue->IsGhostNode(*neighbour_iter))&&(p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>()) )
 			{
 				num_gel_neighbours += 1;
 			}
@@ -146,7 +148,7 @@ bool EpithelialLayerAnoikisCellKiller::HasCellPoppedUp(unsigned nodeIndex)
 				neighbour_iter != neighbours.end();
 				++neighbour_iter)
 		{
-			if (p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>() )
+			if (p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>() )
 			{
 				num_gel_neighbours += 1;
 			}

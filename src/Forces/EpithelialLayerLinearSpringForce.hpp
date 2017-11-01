@@ -1,9 +1,7 @@
 /*
-MODIFIED BY PHILLIP BROWN: 27/10/2017
-- Added mutation that turns a differentiated cell into a "membrane cell" in 
-in order to test a method of introducing a membrane
-- The modifications here only change the way the "mutant" cells interact with each
-other. Otherwise they are still considered "differentiated" cells for other interactions
+MODIFIED BY PHILLIP BROWN: 01/11/2017
+- Added a "membrane cell" in order to test a method of introducing a membrane
+- Also had to add in each cell type cross pair spring stiffness
 MODIFICATIONS around lines 120, 240
 
 MODIFIED BY AXEL ALMET FOR RESEARCH: 22/11/14
@@ -88,9 +86,12 @@ private:
     void serialize(Archive & archive, const unsigned int version)
     {
         archive & boost::serialization::base_object<AbstractTwoBodyInteractionForce<ELEMENT_DIM, SPACE_DIM> >(*this);
-        archive & mEpithelialEpithelialSpringStiffness;
-        archive & mEpithelialNonepithelialSpringStiffness;
-        archive & mNonepithelialNonepithelialSpringStiffness;
+        archive & mEpithelialSpringStiffness; // Epithelial covers stem and transit
+        archive & mMembraneSpringStiffness;
+        archive & mStromalSpringStiffness; // Stromal is the differentiated "filler" cells
+        archive & mEpithelialMembraneSpringStiffness;
+        archive & mMembraneStromalSpringStiffness;
+        archive & mStromalEpithelialSpringStiffness;
         archive & mMeinekeDivisionRestingSpringLength;
         archive & mMeinekeSpringGrowthDuration;
         archive & mPanethCellStiffnessRatio;
@@ -98,26 +99,14 @@ private:
 
 protected:
 
-    /**
-     * Epithelial to epithelial spring stiffness.
-     */
-    double mEpithelialEpithelialSpringStiffness;
 
-    /**
-     * Epithelial to non-epithelial spring stiffness.
-     */
-    double mEpithelialNonepithelialSpringStiffness;
-
-    /*
-     * Non-epithelial to non-epithelial spring stiffness.
-     */
-    double mNonepithelialNonepithelialSpringStiffness;
-
-    /*
-     *Membrane to membrane stiffness. Note 
-     */
-
+    double mEpithelialSpringStiffness; // Epithelial covers stem and transit
     double mMembraneSpringStiffness;
+    double mStromalSpringStiffness; // Stromal is the differentiated "filler" cells
+    double mEpithelialMembraneSpringStiffness;
+    double mMembraneStromalSpringStiffness;
+    double mStromalEpithelialSpringStiffness;
+
 
     /**
      * Initial resting spring length after cell division.
@@ -188,56 +177,26 @@ public:
     c_vector<double, SPACE_DIM> CalculateForceBetweenNodes(unsigned nodeAGlobalIndex,
                                                      unsigned nodeBGlobalIndex,
                                                      AbstractCellPopulation<ELEMENT_DIM,SPACE_DIM>& rCellPopulation);
-    /**
-     * @return mEpithelialEpithelialSpringStiffness
-     */
-    double GetEpithelialEpithelialSpringStiffness();
 
-    /**
-     * @return mEpithelialNonepithelialSpringStiffness
-     */
-    double GetEpithelialNonepithelialSpringStiffness();
+    double GetEpithelialSpringStiffness(); // Epithelial covers stem and transit
+    double GetMembraneSpringStiffness();
+    double GetStromalSpringStiffness(); // Stromal is the differentiated "filler" cells
+    double GetEpithelialMembraneSpringStiffness();
+    double GetMembraneStromalSpringStiffness();
+    double GetStromalEpithelialSpringStiffness();
 
-    /**
-     * @return mNonepithelialNonepithelialSpringStiffness
-     */
-    double GetNonepithelialNonepithelialSpringStiffness();
-
-    /**
-     * @return mMeinekeDivisionRestingSpringLength
-     */
     double GetMeinekeDivisionRestingSpringLength();
 
-    /**
-     * @return mMeinekeSpringGrowthDuration
-     */
     double GetMeinekeSpringGrowthDuration();
 
-    /*
-     * @return mPanethCellStiffnessMultiplier
-     */
     double GetPanethCellStiffnessRatio();
 
-    /**
-     * Set mEpithelialEpithelialSpringStiffness.
-     *
-     */
-    void SetEpithelialEpithelialSpringStiffness(double epithelialepithelialSpringStiffness);
-
-    /**
-     * Set mEpithelialNonepithelialSpringStiffness.
-     */
-    void SetEpithelialNonepithelialSpringStiffness(double epithelialNonepithelialSpringStiffness);
-
-    /**
-     * Set mNonepithelialNonepithelialSpringStiffness.
-     */
-    void SetNonepithelialNonepithelialSpringStiffness(double nonepihelialNonepithelialSpringStiffness);
-
-    /**
-     * Set mMembraneSpringStiffness.
-     */
+    void SetEpithelialSpringStiffness(double epithelialSpringStiffness); // Epithelial covers stem and transit
     void SetMembraneSpringStiffness(double membraneSpringStiffness);
+    void SetStromalSpringStiffness(double stromalSpringStiffness); // Stromal is the differentiated "filler" cells
+    void SetEpithelialMembraneSpringStiffness(double epithelialMembraneSpringStiffness);
+    void SetMembraneStromalSpringStiffness(double membraneStromalSpringStiffness);
+    void SetStromalEpithelialSpringStiffness(double stromalEpithelialSpringStiffness);
 
     /**
      * Set mMeinekeDivisionRestingSpringLength.

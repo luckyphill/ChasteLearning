@@ -11,6 +11,7 @@
 /* The next set of classes are needed specifically for the simulation, which can be found in the core code. */
 
 #include "HoneycombMeshGenerator.hpp" //Generates mesh
+#include "CylindricalHoneycombMeshGenerator.hpp" //Generates mesh
 #include "OffLatticeSimulation.hpp" //Simulates the evolution of the population
 #include "MeshBasedCellPopulationWithGhostNodes.hpp"
 #include "VoronoiDataWriter.hpp" //Allows us to visualise output in Paraview
@@ -23,11 +24,10 @@
 #include "TransitCellProliferativeType.hpp"
 #include "StemCellProliferativeType.hpp"
 #include "EpithelialLayerAnoikisCellKiller.hpp"
-#include "EpithelialLayerBasementMembraneForce.hpp"
 #include "EpithelialLayerLinearSpringForce.hpp"
 #include "TransitCellAnoikisResistantMutationState.hpp"
-#include "DifferentiatedMembraneState.hpp" //not a very good name, supposed to be quick and dirty way to create a "membrane cell" by mutating a differentiated cell
 #include "MembraneCellForce.hpp" // A force to restore the membrane to it's preferred shape
+#include "NoCellCycleModel.hpp"
 
 
 class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
@@ -39,24 +39,29 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		unsigned cells_across = 40;
 		unsigned ghosts = 4;
 
-		double dt = 0.005;
-		double end_time = 10;
-		double sampling_multiple = 10;
+		double dt = 0.001;
+		double end_time = 1;
+		double sampling_multiple = 100;
 
 		//Set all the spring stiffness variables
-		double epithelial_epithelial_stiffness = 10.0; //Epithelial-epithelial spring connections
-		double epithelial_nonepithelial_stiffness = 5.0; //Epithelial-non-epithelial spring connections
-		double nonepithelial_nonepithelial_stiffness = 10.0; //Non-epithelial-non-epithelial spring connections
-		double membrane_stiffness = 10.0; //Stiffnes of mebrane to membrane spring connections
+		double epithelialStiffness = 15.0; //Epithelial-epithelial spring connections
+		double membraneStiffness = 20.0; //Stiffness of membrane to membrane spring connections
+		double stromalStiffness = 15.0;
+
+		double epithelialMembraneStiffness = 5.0; //Epithelial-non-epithelial spring connections
+		double membraneStromalStiffness = 15.0; //Non-epithelial-non-epithelial spring connections
+		double stromalEpithelialStiffness = 10.0;
+
 		double torsional_stiffness = 25.0;
 		double stiffness_ratio = 4.5; // For paneth cells
 		
 		double targetCurvatureStemStem = 1/5;
-		double targetCurvatureStemTrans = 1/10;
+		double targetCurvatureStemTrans = 0; // Not implemented properly, so keep it the same as TransTrans for now
 		double targetCurvatureTransTrans = 0;
 
-		HoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
-		MutableMesh<2,2>* p_mesh = generator.GetMesh();
+		CylindricalHoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
+		//MutableMesh<2,2>* p_mesh = generator.GetMesh();
+		Cylindrical2dMesh* p_mesh = generator.GetCylindricalMesh();
 
 		//Sort through the indices and decide which ones are ghost nodes
 		std::vector<unsigned> real_indices = generator.GetCellLocationIndices();
@@ -65,8 +70,9 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		boost::shared_ptr<AbstractCellProperty> p_trans_type = CellPropertyRegistry::Instance()->Get<TransitCellProliferativeType>();
 		boost::shared_ptr<AbstractCellProperty> p_diff_type = CellPropertyRegistry::Instance()->Get<DifferentiatedCellProliferativeType>();
 		boost::shared_ptr<AbstractCellProperty> p_stem_type = CellPropertyRegistry::Instance()->Get<StemCellProliferativeType>();
+		boost::shared_ptr<AbstractCellProperty> p_membrane = CellPropertyRegistry::Instance()->Get<MembraneCellProliferativeType>();
 
-		boost::shared_ptr<AbstractCellProperty> p_membrane_mutated = CellPropertyRegistry::Instance()->Get<DifferentiatedMembraneState>();
+		
 
 		//create a vector to store the cells; it is currently empty
 		std::vector<CellPtr> cells;
@@ -90,9 +96,9 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 			p_cell->SetCellProliferativeType(p_diff_type); //set the type to differentiated if it's not a ghost node - types will be reset as follows
 
 			//add stems cells to the base of the crypt
-			if ( y >= (cells_up - 1) * sqrt(3) /2 )
+			if ( y >= (cells_up - 1.5) * sqrt(3) /2 )
 			{
-				if (x > cells_across/2 - 5 && x < cells_across/2 + 5 && x>5 && x<cells_across - 5)
+				if (x > cells_across/2 - 5 && x < cells_across/2 + 5)
 				{
 					p_cell->SetCellProliferativeType(p_stem_type); //set the cell to stem if it's in the middle bunch
 				} else 
@@ -101,9 +107,11 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 				}
 				
 			}
-			if( y < (cells_up - 1) * sqrt(3) /2  && y >= (cells_up - 2) * sqrt(3) /2)
+			if( y < (cells_up - 1.5) * sqrt(3) /2  && y >= (cells_up - 2) * sqrt(3) /2)
 			{
-				p_cell->SetMutationState(p_membrane_mutated);
+				NoCellCycleModel* p_no_cycle_model = new NoCellCycleModel();
+				p_cell->SetCellProliferativeType(p_membrane);
+				p_cell->SetCellCycleModel(p_no_cycle_model);
 			}
 
 			p_cell->InitialiseCellCycleModel();
@@ -122,10 +130,13 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		MAKE_PTR(EpithelialLayerLinearSpringForce<2>, p_spring_force);
 		p_spring_force->SetCutOffLength(1.5);
 		//Set the spring stiffnesses
-		p_spring_force->SetEpithelialEpithelialSpringStiffness(epithelial_epithelial_stiffness);
-		p_spring_force->SetEpithelialNonepithelialSpringStiffness(epithelial_nonepithelial_stiffness);
-		p_spring_force->SetNonepithelialNonepithelialSpringStiffness(nonepithelial_nonepithelial_stiffness);
-		p_spring_force->SetMembraneSpringStiffness(membrane_stiffness);
+		p_spring_force->SetEpithelialSpringStiffness(epithelialStiffness);
+		p_spring_force->SetMembraneSpringStiffness(membraneStiffness);
+		p_spring_force->SetStromalSpringStiffness(stromalStiffness);
+		p_spring_force->SetEpithelialMembraneSpringStiffness(epithelialMembraneStiffness);
+		p_spring_force->SetMembraneStromalSpringStiffness(membraneStromalStiffness);
+		p_spring_force->SetStromalEpithelialSpringStiffness(stromalEpithelialStiffness);
+
 		p_spring_force->SetPanethCellStiffnessRatio(stiffness_ratio);
 		simulator.AddForce(p_spring_force);
 
@@ -146,6 +157,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
         MAKE_PTR(GeneralisedLinearSpringForce<2>, p_force);
         simulator.AddForce(p_force);
 
+        std::cout << "All good until we simulate" << std::endl;
         simulator.Solve();
 
 
