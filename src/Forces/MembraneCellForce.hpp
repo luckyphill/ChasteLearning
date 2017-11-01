@@ -60,12 +60,6 @@ private :
         archive & mTargetCurvatureTransTrans;
     }
 
-protected:
-    // A vector of node indices that are the membrane
-    // Each node in order must be connected to the next
-    // This assume that the lumen is always to the left if you're looking in the direction of the next cell
-    std::vector<unsigned> mMembraneIndices;
-
 public :
 
     /**
@@ -78,12 +72,11 @@ public :
      */
     ~MembraneCellForce();
 
-    void SetMembraneIndices(std::vector<unsigned> membraneIndices);
-
     double GetTargetAngle(AbstractCellPopulation<2>& rCellPopulation, CellPtr centre_cell,
                                                                         c_vector<double, 2> leftCell,
                                                                         c_vector<double, 2> centreCell,
                                                                         c_vector<double, 2> rightCell);
+    std::vector<unsigned> GetMembraneIndices(AbstractCellPopulation<2>& rCellPopulation);
 
     /**
      * Pure virtual, must implement

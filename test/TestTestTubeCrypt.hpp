@@ -53,18 +53,18 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 		double ring_width = 0.9;
 
-		double dt = 0.005;
-		double end_time = 10;
+		double dt = 0.01;
+		double end_time = 100;
 		double sampling_multiple = 10;
 		//Basement membrane force parameters
 		double bm_force = 6.0;
 		double target_curvature = .15;
 		//Set all the spring stiffness variables
-		double epithelial_epithelial_stiffness = 5.0; //Epithelial-epithelial spring connections
+		double epithelial_epithelial_stiffness = 10.0; //Epithelial-epithelial spring connections
 		double epithelial_nonepithelial_stiffness = 5.0; //Epithelial-non-epithelial spring connections
 		double nonepithelial_nonepithelial_stiffness = 10.0; //Non-epithelial-non-epithelial spring connections
-		double membrane_stiffness = 15.0; //Stiffnes of mebrane to membrane spring connections
-		double torsional_stiffness = 15.0;
+		double membrane_stiffness = 10.0; //Stiffnes of mebrane to membrane spring connections
+		double torsional_stiffness = 25.0;
 		double targetCurvatureStemStem = 1/circle_radius;
 		double targetCurvatureStemTrans = 1/(2*circle_radius);
 		double targetCurvatureTransTrans = 0;
@@ -106,18 +106,16 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 				real_indices_set.insert(cell_index);
 			}
 		}
+
 		//When instantiating a cell, we need to provide a mutation state
 		boost::shared_ptr<AbstractCellProperty> p_state = CellPropertyRegistry::Instance()->Get<WildTypeCellMutationState>();
-		//Also need proliferative types:
-		//Transit
 		boost::shared_ptr<AbstractCellProperty> p_trans_type = CellPropertyRegistry::Instance()->Get<TransitCellProliferativeType>();
-		//Differentiated
 		boost::shared_ptr<AbstractCellProperty> p_diff_type = CellPropertyRegistry::Instance()->Get<DifferentiatedCellProliferativeType>();
-		//Stem
 		boost::shared_ptr<AbstractCellProperty> p_stem_type = CellPropertyRegistry::Instance()->Get<StemCellProliferativeType>();
 
 		//create a vector to store the cells; it is currently empty
 		std::vector<CellPtr> cells;
+
 		//go through the real indices and build some cells
 		for (unsigned i = 0; i<real_indices.size(); i++)
 		{	
@@ -213,7 +211,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
             if (node_index == 822) // Chosen from looking at the results from steady state
             {
-                cell_iter->SetMutationState(p_state_mutated);
+                //cell_iter->SetMutationState(p_state_mutated);
             }
             //if cell type is epithelial or stem, then make sure it's a monolayer and make all the connected differentiated cells a mutated type (if they haven't already)
             if (cell_iter->GetCellProliferativeType()->IsType<TransitCellProliferativeType>() || cell_iter->GetCellProliferativeType()->IsType<StemCellProliferativeType>())
@@ -258,84 +256,83 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 	    	}
         }
 
-        unsigned starting_membrane_index = 0;
-        // Finding the first membrane cell
-        for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population.Begin();
-             cell_iter != cell_population.End();
-             ++cell_iter)
-        {
-        	unsigned node_index = cell_population.GetLocationIndexUsingCell(*cell_iter);
-        	double x = p_mesh->GetNode(node_index)->rGetLocation()[0];
+      //   unsigned starting_membrane_index = 0;
+      //   // Finding the first membrane cell
+      //   for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population.Begin();
+      //        cell_iter != cell_population.End();
+      //        ++cell_iter)
+      //   {
+      //   	unsigned node_index = cell_population.GetLocationIndexUsingCell(*cell_iter);
+      //   	double x = p_mesh->GetNode(node_index)->rGetLocation()[0];
         	
-        	// If we've got a membrane cell, check if it's at the end we want
-        	if (cell_iter->GetMutationState()->IsType<DifferentiatedMembraneState>())
-        	{
-        		// Loop through neighbours and count number of membrane neighbours, if it's only one, then we have an end cell
-        		std::set<unsigned> neighbouring_node_indices = cell_population.GetNeighbouringNodeIndices(node_index);
-        		unsigned membrane_cell_neighbour_count=0;
-	            for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
-	         			iter != neighbouring_node_indices.end();
-	         				++iter)
-	    		{
-	    			//count the number of membrane neighbours
-	    			if (!cell_population.IsGhostNode(*iter))
-	    			{
-	    				if (cell_population.GetCellUsingLocationIndex(*iter)->GetMutationState()->IsType<DifferentiatedMembraneState>())
-		    			{
-		    				membrane_cell_neighbour_count +=1;
-		    			}
-	    			}
+      //   	// If we've got a membrane cell, check if it's at the end we want
+      //   	if (cell_iter->GetMutationState()->IsType<DifferentiatedMembraneState>())
+      //   	{
+      //   		// Loop through neighbours and count number of membrane neighbours, if it's only one, then we have an end cell
+      //   		std::set<unsigned> neighbouring_node_indices = cell_population.GetNeighbouringNodeIndices(node_index);
+      //   		unsigned membrane_cell_neighbour_count=0;
+	     //        for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+	     //     			iter != neighbouring_node_indices.end();
+	     //     				++iter)
+	    	// 	{
+	    	// 		//count the number of membrane neighbours
+	    	// 		if (!cell_population.IsGhostNode(*iter))
+	    	// 		{
+	    	// 			if (cell_population.GetCellUsingLocationIndex(*iter)->GetMutationState()->IsType<DifferentiatedMembraneState>())
+		    // 			{
+		    // 				membrane_cell_neighbour_count +=1;
+		    // 			}
+	    	// 		}
 	    			
-	    		}
-	        	if (x < cells_across/2 && membrane_cell_neighbour_count == 1) // We want it to be the left hand side free end
-	        	{
-	        		starting_membrane_index = node_index;
-	        		break;
-	        	}
-        	} 
-        }
+	    	// 	}
+	     //    	if (x < cells_across/2 && membrane_cell_neighbour_count == 1) // We want it to be the left hand side free end
+	     //    	{
+	     //    		starting_membrane_index = node_index;
+	     //    		break;
+	     //    	}
+      //   	} 
+      //   }
 
-        // With the starting membrane index, we can now build the membrane as a vector of indices
-        std::set<unsigned> membrane_indices_set;
-        std::vector<unsigned> membrane_indices;
+      //   // With the starting membrane index, we can now build the membrane as a vector of indices
+      //   std::set<unsigned> membrane_indices_set;
+      //   std::vector<unsigned> membrane_indices;
 
-        membrane_indices_set.insert(starting_membrane_index);
-        membrane_indices.push_back(starting_membrane_index); // Duplication of effort because it's easier to find an entry in a set than a vector
+      //   membrane_indices_set.insert(starting_membrane_index);
+      //   membrane_indices.push_back(starting_membrane_index); // Duplication of effort because it's easier to find an entry in a set than a vector
 
-        bool reached_final_membrane_cell = false;
-        unsigned current_index = starting_membrane_index;
+      //   bool reached_final_membrane_cell = false;
+      //   unsigned current_index = starting_membrane_index;
 
-        while (!reached_final_membrane_cell)
-        {
-        	reached_final_membrane_cell = true; // Assume we're done until proven otherwise
-        	// Loop through neighbours, find a membrane cell that isn't already accounted for
-        	std::set<unsigned> neighbouring_node_indices = cell_population.GetNeighbouringNodeIndices(current_index);
-	        for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
-		         			iter != neighbouring_node_indices.end();
-		         				++iter)
-		    {
-		    	// If the neighbour is a membrane cell and not already in the list, add it and set it as the current cell
-		    	if (!cell_population.IsGhostNode(*iter))
-		    	{
-		    		CellPtr neighbour_cell = cell_population.GetCellUsingLocationIndex(*iter);
-		    		if (neighbour_cell->GetMutationState()->IsType<DifferentiatedMembraneState>() && membrane_indices_set.find(*iter) == membrane_indices_set.end())
-			    	{
-	        			membrane_indices_set.insert(*iter);
-	        			membrane_indices.push_back(*iter);
-	        			reached_final_membrane_cell = false;
-	        			current_index = *iter;
-	        			break;
-			    	}
-		    	}
+      //   while (!reached_final_membrane_cell)
+      //   {
+      //   	reached_final_membrane_cell = true; // Assume we're done until proven otherwise
+      //   	// Loop through neighbours, find a membrane cell that isn't already accounted for
+      //   	std::set<unsigned> neighbouring_node_indices = cell_population.GetNeighbouringNodeIndices(current_index);
+	     //    for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+		    //      			iter != neighbouring_node_indices.end();
+		    //      				++iter)
+		    // {
+		    // 	// If the neighbour is a membrane cell and not already in the list, add it and set it as the current cell
+		    // 	if (!cell_population.IsGhostNode(*iter))
+		    // 	{
+		    // 		CellPtr neighbour_cell = cell_population.GetCellUsingLocationIndex(*iter);
+		    // 		if (neighbour_cell->GetMutationState()->IsType<DifferentiatedMembraneState>() && membrane_indices_set.find(*iter) == membrane_indices_set.end())
+			   //  	{
+	     //    			membrane_indices_set.insert(*iter);
+	     //    			membrane_indices.push_back(*iter);
+	     //    			reached_final_membrane_cell = false;
+	     //    			current_index = *iter;
+	     //    			break;
+			   //  	}
+		    // 	}
 		    	
-		    }
-        }
+		    // }
+      //   }
 
         // Now we have an ordered vector of membrane indices, starting at the left and going anticlockwise through the stem cell niche
 
         // Make the force for the membrane
         MAKE_PTR(MembraneCellForce, p_membrane_force);
-        p_membrane_force->SetMembraneIndices(membrane_indices);
         p_membrane_force->SetBasementMembraneTorsionalStiffness(torsional_stiffness);
         p_membrane_force->SetTargetCurvatures(targetCurvatureStemStem, targetCurvatureStemTrans, targetCurvatureTransTrans);
         simulator.AddForce(p_membrane_force);
