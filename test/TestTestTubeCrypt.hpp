@@ -20,17 +20,21 @@
 #include "TransitCellProliferativeType.hpp"
 #include "FakePetscSetup.hpp"
 #include "GeneralisedLinearSpringForce.hpp" //give a force to use between cells
+
 #include "UniformCellCycleModel.hpp"
 #include "WildTypeCellMutationState.hpp"
 #include "TransitCellProliferativeType.hpp"
 #include "StemCellProliferativeType.hpp"
-#include "EpithelialLayerAnoikisCellKiller.hpp"
 #include "EpithelialLayerBasementMembraneForce.hpp"
 #include "EpithelialLayerLinearSpringForce.hpp"
-#include "TransitCellAnoikisResistantMutationState.hpp"
+
+#include "AnoikisCellKillerMembraneCell.hpp"
+#include "LinearSpringForceMembraneCell.hpp"
 #include "DifferentiatedMembraneState.hpp" //not a very good name, supposed to be quick and dirty way to create a "membrane cell" by mutating a differentiated cell
 #include "MembraneCellForce.hpp" // A force to restore the membrane to it's preferred shape
 #include "NoCellCycleModel.hpp"
+
+#include "TransitCellAnoikisResistantMutationState.hpp"
 
 class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 {
@@ -175,7 +179,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
         simulator.SetSamplingTimestepMultiple(sampling_multiple);
 
         /* Add an anoikis-based cell killer. */
-		MAKE_PTR_ARGS(EpithelialLayerAnoikisCellKiller, p_anoikis_killer, (&cell_population));
+		MAKE_PTR_ARGS(AnoikisCellKillerMembraneCell, p_anoikis_killer, (&cell_population));
 		simulator.AddCellKiller(p_anoikis_killer);
 
         MAKE_PTR(GeneralisedLinearSpringForce<2>, p_force);
@@ -188,7 +192,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		// simulator.AddForce(p_bm_force);
 
 
-		MAKE_PTR(EpithelialLayerLinearSpringForce<2>, p_spring_force);
+		MAKE_PTR(LinearSpringForceMembraneCell<2>, p_spring_force);
 		p_spring_force->SetCutOffLength(1.5);
 		//Set the spring stiffnesses
 		p_spring_force->SetEpithelialSpringStiffness(epithelialStiffness);

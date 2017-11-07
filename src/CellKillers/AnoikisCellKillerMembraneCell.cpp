@@ -8,16 +8,23 @@
  * 			Author: Axel Almet
  */
 
-#include "EpithelialLayerAnoikisCellKiller.hpp"
+/*
+ * MODIFIED BY PHILLIP BROWN 1/11/2017
+ * Added in a check for an anoikis resistant mutation, which stops a cell from dying when it
+ * detaches from the non epithelial region i.e. the basement layer of cells
+ * Also modified to check if cell is in contact with MembraneCellProliferativeType
+ */
+
+#include "AnoikisCellKillerMembraneCell.hpp"
 #include "AbstractCellKiller.hpp"
 #include "AbstractCellProperty.hpp"
 #include "MeshBasedCellPopulation.hpp"
 #include "NodeBasedCellPopulation.hpp"
 #include "PanethCellMutationState.hpp"
 #include "TransitCellAnoikisResistantMutationState.hpp"
+#include "MembraneCellProliferativeType.hpp"
 
-
-EpithelialLayerAnoikisCellKiller::EpithelialLayerAnoikisCellKiller(AbstractCellPopulation<2>* pCellPopulation)
+AnoikisCellKillerMembraneCell::AnoikisCellKillerMembraneCell(AbstractCellPopulation<2>* pCellPopulation)
     : AbstractCellKiller<2>(pCellPopulation),
     mCellsRemovedByAnoikis(0),
     mCutOffRadius(1.5)
@@ -27,24 +34,24 @@ EpithelialLayerAnoikisCellKiller::EpithelialLayerAnoikisCellKiller(AbstractCellP
 //	mAnoikisOutputFile = output_file_handler.OpenOutputFile("results.anoikis");
 }
 
-EpithelialLayerAnoikisCellKiller::~EpithelialLayerAnoikisCellKiller()
+AnoikisCellKillerMembraneCell::~AnoikisCellKillerMembraneCell()
 {
 //    mAnoikisOutputFile->close();
 }
 
 //Method to get mCutOffRadius
-double EpithelialLayerAnoikisCellKiller::GetCutOffRadius()
+double AnoikisCellKillerMembraneCell::GetCutOffRadius()
 {
 	return mCutOffRadius;
 }
 
 //Method to set mCutOffRadius
-void EpithelialLayerAnoikisCellKiller::SetCutOffRadius(double cutOffRadius)
+void AnoikisCellKillerMembraneCell::SetCutOffRadius(double cutOffRadius)
 {
 	mCutOffRadius = cutOffRadius;
 }
 
-std::set<unsigned> EpithelialLayerAnoikisCellKiller::GetNeighbouringNodeIndices(unsigned nodeIndex)
+std::set<unsigned> AnoikisCellKillerMembraneCell::GetNeighbouringNodeIndices(unsigned nodeIndex)
 {
 	// Create a set of neighbouring node indices
 	std::set<unsigned> neighbouring_node_indices;
@@ -98,7 +105,7 @@ std::set<unsigned> EpithelialLayerAnoikisCellKiller::GetNeighbouringNodeIndices(
  * TRUE if cell has popped up
  * FALSE if cell remains in the monolayer
  */
-bool EpithelialLayerAnoikisCellKiller::HasCellPoppedUp(unsigned nodeIndex)
+bool AnoikisCellKillerMembraneCell::HasCellPoppedUp(unsigned nodeIndex)
 {
 	bool has_cell_popped_up = false;	// Initialising
 
@@ -116,7 +123,7 @@ bool EpithelialLayerAnoikisCellKiller::HasCellPoppedUp(unsigned nodeIndex)
 				neighbour_iter != neighbours.end();
 				++neighbour_iter)
 		{
-			if ( (!p_tissue->IsGhostNode(*neighbour_iter))&&(p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>()) )
+			if ( (!p_tissue->IsGhostNode(*neighbour_iter))&&(p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>()) )
 			{
 				num_gel_neighbours += 1;
 			}
@@ -141,7 +148,7 @@ bool EpithelialLayerAnoikisCellKiller::HasCellPoppedUp(unsigned nodeIndex)
 				neighbour_iter != neighbours.end();
 				++neighbour_iter)
 		{
-			if (p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>() )
+			if (p_tissue->GetCellUsingLocationIndex(*neighbour_iter)->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>() )
 			{
 				num_gel_neighbours += 1;
 			}
@@ -159,7 +166,7 @@ bool EpithelialLayerAnoikisCellKiller::HasCellPoppedUp(unsigned nodeIndex)
 /** A method to return a vector that indicates which cells should be killed by anoikis
  * and which by compression-driven apoptosis
  */
-std::vector<c_vector<unsigned,2> > EpithelialLayerAnoikisCellKiller::RemoveByAnoikis()
+std::vector<c_vector<unsigned,2> > AnoikisCellKillerMembraneCell::RemoveByAnoikis()
 {
 
     std::vector<c_vector<unsigned,2> > cells_to_remove;
@@ -183,7 +190,9 @@ std::vector<c_vector<unsigned,2> > EpithelialLayerAnoikisCellKiller::RemoveByAno
 
     		// Examine each epithelial node to see if it should be removed by anoikis and then if it
     		// should be removed by compression-driven apoptosis
-    		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+    		// Edit by Phillip Brown: Added a check for anoikis resistant mutation to prevent this kind of cell death
+    		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>()
+    			&& !cell_iter->GetMutationState()->IsType<TransitCellAnoikisResistantMutationState>())
     		{
     			// Determining whether to remove this cell by anoikis
 
@@ -214,7 +223,9 @@ std::vector<c_vector<unsigned,2> > EpithelialLayerAnoikisCellKiller::RemoveByAno
 
     		// Examine each epithelial node to see if it should be removed by anoikis and then if it
     		// should be removed by compression-driven apoptosis
-    		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+    		// Edit by Phillip Brown: Added a check for anoikis resistant mutation to prevent this kind of cell death
+    		if (!cell_iter->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>()
+    			&& !cell_iter->GetMutationState()->IsType<TransitCellAnoikisResistantMutationState>())
     		{
     			// Determining whether to remove this cell by anoikis
 
@@ -238,7 +249,7 @@ std::vector<c_vector<unsigned,2> > EpithelialLayerAnoikisCellKiller::RemoveByAno
  *
  * Also will remove differentiated cells at the orifice if mSloughOrifice is true
  */
-void EpithelialLayerAnoikisCellKiller::CheckAndLabelCellsForApoptosisOrDeath()
+void AnoikisCellKillerMembraneCell::CheckAndLabelCellsForApoptosisOrDeath()
 {
 	if (dynamic_cast<MeshBasedCellPopulation<2>*>(this->mpCellPopulation))
 	{
@@ -291,7 +302,7 @@ void EpithelialLayerAnoikisCellKiller::CheckAndLabelCellsForApoptosisOrDeath()
 	}
 }
 
-void EpithelialLayerAnoikisCellKiller::SetNumberCellsRemoved(std::vector<c_vector<unsigned,2> > cellsRemoved)
+void AnoikisCellKillerMembraneCell::SetNumberCellsRemoved(std::vector<c_vector<unsigned,2> > cellsRemoved)
 {
 	unsigned num_removed_by_anoikis = 0;
 
@@ -306,12 +317,12 @@ void EpithelialLayerAnoikisCellKiller::SetNumberCellsRemoved(std::vector<c_vecto
     mCellsRemovedByAnoikis += num_removed_by_anoikis;
 }
 
-unsigned EpithelialLayerAnoikisCellKiller::GetNumberCellsRemoved()
+unsigned AnoikisCellKillerMembraneCell::GetNumberCellsRemoved()
 {
 	return mCellsRemovedByAnoikis;
 }
 
-void EpithelialLayerAnoikisCellKiller::SetLocationsOfCellsRemovedByAnoikis(std::vector<c_vector<unsigned,2> > cellsRemoved)
+void AnoikisCellKillerMembraneCell::SetLocationsOfCellsRemovedByAnoikis(std::vector<c_vector<unsigned,2> > cellsRemoved)
 {
 	if (dynamic_cast<MeshBasedCellPopulation<2>*>(this->mpCellPopulation))
 	{
@@ -367,12 +378,12 @@ void EpithelialLayerAnoikisCellKiller::SetLocationsOfCellsRemovedByAnoikis(std::
 	}
 }
 
-std::vector<c_vector<double,3> > EpithelialLayerAnoikisCellKiller::GetLocationsOfCellsRemovedByAnoikis()
+std::vector<c_vector<double,3> > AnoikisCellKillerMembraneCell::GetLocationsOfCellsRemovedByAnoikis()
 {
 	return mLocationsOfAnoikisCells;
 }
 
-void EpithelialLayerAnoikisCellKiller::OutputCellKillerParameters(out_stream& rParamsFile)
+void AnoikisCellKillerMembraneCell::OutputCellKillerParameters(out_stream& rParamsFile)
 {
     *rParamsFile << "\t\t\t<CellsRemovedByAnoikis>" << mCellsRemovedByAnoikis << "</CellsRemovedByAnoikis> \n";
     *rParamsFile << "\t\t\t<CutOffRadius>" << mCutOffRadius << "</CutOffRadius> \n";
@@ -385,4 +396,4 @@ void EpithelialLayerAnoikisCellKiller::OutputCellKillerParameters(out_stream& rP
 
 
 #include "SerializationExportWrapperForCpp.hpp"
-CHASTE_CLASS_EXPORT(EpithelialLayerAnoikisCellKiller)
+CHASTE_CLASS_EXPORT(AnoikisCellKillerMembraneCell)

@@ -170,8 +170,8 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 
 	if (contact_with_stem && !contact_with_trans)
 	{
-		//target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
-		target_angle = 2.8;
+		target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
+		//target_angle = 2.8;
 	}
 
 	return target_angle;

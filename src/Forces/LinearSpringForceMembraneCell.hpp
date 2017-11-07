@@ -1,4 +1,9 @@
 /*
+MODIFIED BY PHILLIP BROWN: 01/11/2017
+- Added a "membrane cell" in order to test a method of introducing a membrane
+- Also had to add in each cell type cross pair spring stiffness
+MODIFICATIONS around lines 120, 240
+
 MODIFIED BY AXEL ALMET FOR RESEARCH: 22/11/14
 Copyright (c) 2005-2014, University of Oxford.
 All rights reserved.
@@ -33,13 +38,13 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 */
 
-#ifndef EPITHELIALLAYERLINEARSPRINGFORCE_HPP_
-#define EPITHELIALLAYERLINEARSPRINGFORCE_HPP_
+#ifndef LINEARSPRINGFORCEMEMBRANECELL_HPP_
+#define LINEARSPRINGFORCEMEMBRANECELL_HPP_
 
 #include "AbstractTwoBodyInteractionForce.hpp"
+#include "DifferentiatedCellProliferativeType.hpp"
 
 #include "ChasteSerialization.hpp"
-#include "DifferentiatedCellProliferativeType.hpp"
 #include <boost/serialization/base_object.hpp>
 
 /**
@@ -63,7 +68,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * Time is in hours.
  */
 template<unsigned  ELEMENT_DIM, unsigned SPACE_DIM=ELEMENT_DIM>
-class EpithelialLayerLinearSpringForce : public AbstractTwoBodyInteractionForce<ELEMENT_DIM, SPACE_DIM>
+class LinearSpringForceMembraneCell : public AbstractTwoBodyInteractionForce<ELEMENT_DIM, SPACE_DIM>
 {
     friend class TestForces;
 
@@ -81,9 +86,12 @@ private:
     void serialize(Archive & archive, const unsigned int version)
     {
         archive & boost::serialization::base_object<AbstractTwoBodyInteractionForce<ELEMENT_DIM, SPACE_DIM> >(*this);
-        archive & mEpithelialEpithelialSpringStiffness;
-        archive & mEpithelialNonepithelialSpringStiffness;
-        archive & mNonepithelialNonepithelialSpringStiffness;
+        archive & mEpithelialSpringStiffness; // Epithelial covers stem and transit
+        archive & mMembraneSpringStiffness;
+        archive & mStromalSpringStiffness; // Stromal is the differentiated "filler" cells
+        archive & mEpithelialMembraneSpringStiffness;
+        archive & mMembraneStromalSpringStiffness;
+        archive & mStromalEpithelialSpringStiffness;
         archive & mMeinekeDivisionRestingSpringLength;
         archive & mMeinekeSpringGrowthDuration;
         archive & mPanethCellStiffnessRatio;
@@ -91,20 +99,14 @@ private:
 
 protected:
 
-    /**
-     * Epithelial to epithelial spring stiffness.
-     */
-    double mEpithelialEpithelialSpringStiffness;
 
-    /**
-     * Epithelial to non-epithelial spring stiffness.
-     */
-    double mEpithelialNonepithelialSpringStiffness;
+    double mEpithelialSpringStiffness; // Epithelial covers stem and transit
+    double mMembraneSpringStiffness;
+    double mStromalSpringStiffness; // Stromal is the differentiated "filler" cells
+    double mEpithelialMembraneSpringStiffness;
+    double mMembraneStromalSpringStiffness;
+    double mStromalEpithelialSpringStiffness;
 
-    /*
-     * Non-epithelial to non-epithelial spring stiffness.
-     */
-    double mNonepithelialNonepithelialSpringStiffness;
 
     /**
      * Initial resting spring length after cell division.
@@ -135,12 +137,12 @@ public:
     /**
      * Constructor.
      */
-    EpithelialLayerLinearSpringForce();
+    LinearSpringForceMembraneCell();
 
     /**
      * Destructor.
      */
-    virtual ~EpithelialLayerLinearSpringForce();
+    virtual ~LinearSpringForceMembraneCell();
 
     /**
      * Return a multiplication factor for the spring constant, which
@@ -175,51 +177,26 @@ public:
     c_vector<double, SPACE_DIM> CalculateForceBetweenNodes(unsigned nodeAGlobalIndex,
                                                      unsigned nodeBGlobalIndex,
                                                      AbstractCellPopulation<ELEMENT_DIM,SPACE_DIM>& rCellPopulation);
-    /**
-     * @return mEpithelialEpithelialSpringStiffness
-     */
-    double GetEpithelialEpithelialSpringStiffness();
 
-    /**
-     * @return mEpithelialNonepithelialSpringStiffness
-     */
-    double GetEpithelialNonepithelialSpringStiffness();
+    double GetEpithelialSpringStiffness(); // Epithelial covers stem and transit
+    double GetMembraneSpringStiffness();
+    double GetStromalSpringStiffness(); // Stromal is the differentiated "filler" cells
+    double GetEpithelialMembraneSpringStiffness();
+    double GetMembraneStromalSpringStiffness();
+    double GetStromalEpithelialSpringStiffness();
 
-    /**
-     * @return mNonepithelialNonepithelialSpringStiffness
-     */
-    double GetNonepithelialNonepithelialSpringStiffness();
-
-    /**
-     * @return mMeinekeDivisionRestingSpringLength
-     */
     double GetMeinekeDivisionRestingSpringLength();
 
-    /**
-     * @return mMeinekeSpringGrowthDuration
-     */
     double GetMeinekeSpringGrowthDuration();
 
-    /*
-     * @return mPanethCellStiffnessMultiplier
-     */
     double GetPanethCellStiffnessRatio();
 
-    /**
-     * Set mEpithelialEpithelialSpringStiffness.
-     *
-     */
-    void SetEpithelialEpithelialSpringStiffness(double epithelialepithelialSpringStiffness);
-
-    /**
-     * Set mEpithelialNonepithelialSpringStiffness.
-     */
-    void SetEpithelialNonepithelialSpringStiffness(double epithelialNonepithelialSpringStiffness);
-
-    /**
-     * Set mNonepithelialNonepithelialSpringStiffness.
-     */
-    void SetNonepithelialNonepithelialSpringStiffness(double nonepihelialNonepithelialSpringStiffness);
+    void SetEpithelialSpringStiffness(double epithelialSpringStiffness); // Epithelial covers stem and transit
+    void SetMembraneSpringStiffness(double membraneSpringStiffness);
+    void SetStromalSpringStiffness(double stromalSpringStiffness); // Stromal is the differentiated "filler" cells
+    void SetEpithelialMembraneSpringStiffness(double epithelialMembraneSpringStiffness);
+    void SetMembraneStromalSpringStiffness(double membraneStromalSpringStiffness);
+    void SetStromalEpithelialSpringStiffness(double stromalEpithelialSpringStiffness);
 
     /**
      * Set mMeinekeDivisionRestingSpringLength.
@@ -251,6 +228,6 @@ public:
 };
 
 #include "SerializationExportWrapper.hpp"
-EXPORT_TEMPLATE_CLASS_ALL_DIMS(EpithelialLayerLinearSpringForce)
+EXPORT_TEMPLATE_CLASS_ALL_DIMS(LinearSpringForceMembraneCell)
 
-#endif /*EPITHELIALLAYERLINEARSPRINGFORCE_HPP_*/
+#endif /*LINEARSPRINGFORCEMEMBRANECELL_HPP_*/
