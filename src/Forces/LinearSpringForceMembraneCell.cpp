@@ -5,17 +5,13 @@ in order to test a method of introducing a membrane
 - The modifications here only change the way the "mutant" cells interact with each
 other. Otherwise they are still considered "differentiated" cells for other interactions
 MODIFICATIONS around lines 48, 211, 259, 410, 448
-
 MODIFIED BY AXEL ALMET: 23/12/14
 Copyright (c) 2005-2014, University of Oxford.
 All rights reserved.
-
 University of Oxford means the Chancellor, Masters and Scholars of the
 University of Oxford, having an administrative office at Wellington
 Square, Oxford OX1 2JD, UK.
-
 This file is part of Chaste.
-
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
  * Redistributions of source code must retain the above copyright notice,
@@ -26,7 +22,6 @@ modification, are permitted provided that the following conditions are met:
  * Neither the name of the University of Oxford nor the names of its
    contributors may be used to endorse or promote products derived from this
    software without specific prior written permission.
-
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -37,7 +32,6 @@ GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
 HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 */
 
 #include "LinearSpringForceMembraneCell.hpp"
@@ -204,14 +198,14 @@ c_vector<double, SPACE_DIM> LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>
     }
     if (p_cell_B->HasApoptosisBegun())
     {
-    	double time_until_death_b = p_cell_B->GetTimeUntilDeath();
-    	b_rest_length = b_rest_length * time_until_death_b / p_cell_B->GetApoptosisTime();
+        double time_until_death_b = p_cell_B->GetTimeUntilDeath();
+        b_rest_length = b_rest_length * time_until_death_b / p_cell_B->GetApoptosisTime();
     }
 
     rest_length = a_rest_length + b_rest_length;
     //assert(rest_length <= 1.0+1e-12); ///\todo #1884 Magic number: would "<= 1.0" do?
 
-	double length_change = distance_between_nodes - rest_length;
+    double length_change = distance_between_nodes - rest_length;
 
     double spring_constant = 0.0;
 

@@ -7,6 +7,8 @@
 #include "AbstractForce.hpp"
 #include "MeshBasedCellPopulation.hpp"
 #include "DifferentiatedCellProliferativeType.hpp"
+#include "TransitCellProliferativeType.hpp"
+#include "StemCellProliferativeType.hpp"
 
 #include <cmath>
 #include <list>

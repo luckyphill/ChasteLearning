@@ -31,6 +31,8 @@
 #include "LinearSpringForceMembraneCell.hpp"
 #include "MembraneCellForce.hpp" // A force to restore the membrane to it's preferred shape
 #include "NoCellCycleModel.hpp"
+#include "CryptBoundaryCondition.hpp"
+#include "BoundaryCellProperty.hpp"
 
 
 class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
@@ -99,7 +101,6 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 
 			p_cell->SetCellProliferativeType(p_diff_type); //set the type to differentiated if it's not a ghost node - types will be reset as follows
 
-			//add stems cells to the base of the crypt
 			if ( y >= (cells_up - 1.5) * sqrt(3) /2 )
 			{
 				if (x > cells_across/2 - 5 && x < cells_across/2 + 5)
@@ -184,10 +185,10 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		double target_curvature = 0.2; //Set the target curvature, i.e. how circular the layer wants to be
 
 		std::cout << "1" << std::endl;
-		// CylindricalHoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
-		// Cylindrical2dMesh* p_mesh = generator.GetCylindricalMesh();
-		HoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
-		MutableMesh<2,2>* p_mesh = generator.GetMesh();
+		CylindricalHoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
+		Cylindrical2dMesh* p_mesh = generator.GetCylindricalMesh();
+		// HoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
+		// MutableMesh<2,2>* p_mesh = generator.GetMesh();
 
 		//Sort through the indices and decide which ones are ghost nodes
 		std::vector<unsigned> real_indices = generator.GetCellLocationIndices();
@@ -265,6 +266,9 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		simulator.AddCellKiller(p_anoikis_killer);
 		std::cout << "10" << std::endl;
 
+		// Stop it launching into the stratosphere
+		MAKE_PTR_ARGS(CryptBoundaryCondition, p_bc, (&cell_population));
+		simulator.AddCellPopulationBoundaryCondition(p_bc);
 
 		//Set output directory
 		simulator.SetOutputDirectory("TestCurvatureInducedCryptMembraneForce");

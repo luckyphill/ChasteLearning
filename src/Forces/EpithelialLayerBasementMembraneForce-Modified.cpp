@@ -74,8 +74,31 @@ std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForce::GetEpi
     {
     	boost::shared_ptr<AbstractCellProperty> p_type = cell_iter->GetCellProliferativeType();
 
+    	unsigned node_index = cell_population->GetLocationIndexUsingCell(*cell_iter);
+    	
+    	// If we've got a epithelial cell
+    	if ((cell_iter->GetCellProliferativeType()->IsType<StemCellProliferativeType>() ||  cell_iter->GetCellProliferativeType()->IsType<TransitCellProliferativeType>()) && !cell_iter->IsDead())
+    	{
+    		// When we do, get the neighbours
+    		std::set<unsigned> neighbouring_node_indices = cell_population->GetNeighbouringNodeIndices(node_index);
+    		unsigned lumen_neighbour_count=0;
+            for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+         			iter != neighbouring_node_indices.end();
+         				++iter)
+    		{
+    			//count the number of membrane neighbours
+    			if (cell_population->GetCellUsingLocationIndex(*iter)->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+    			{
+    				lumen_neighbour_count +=1;
+    			}
+    			
+    		}
+    	} 
+
+    	gel_nodes.push_back(node_index)
+
     	// Need these to not be stromal cells (and not dead)
-    	if ( (p_type->IsType<DifferentiatedCellProliferativeType>()==false) && (!cell_iter->IsDead()) )	// an epithelial cell
+    	if ( (p_type->IsType<DifferentiatedCellProliferativeType>()==false) && !cell_iter->IsDead() )	// an epithelial cell
     	{
     		Node<2>* p_node = p_tissue->GetNodeCorrespondingToCell(*cell_iter);	// Pointer to node
     		unsigned node_index = p_node->GetIndex();
