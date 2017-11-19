@@ -309,7 +309,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		double torsional_stiffness = 25.0;
 		double stiffness_ratio = 4.5; // For paneth cells
 		
-		double targetCurvatureStemStem = 1/5;
+		double targetCurvatureStemStem = 0.2;
 		double targetCurvatureStemTrans = 0; // Not implemented properly, so keep it the same as TransTrans for now
 		double targetCurvatureTransTrans = 0;
 
@@ -488,7 +488,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 	    				real_neighbour_count +=1;
 	    			}
 	    		}
-	    		//if the cell doesn't have any ghost neighbours, then it's not a monolayer, so convert back to differntiated type
+	    		//if the cell doesn't have any ghost neighbours, then it's not a monolayer, so convert back to differentiated type
 	    		if (real_neighbour_count == neighbouring_node_indices.size())
 	    		{
 	    			//std::cout <<"Changed "<< node_index << std::endl;
@@ -500,7 +500,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
         // Now we have an ordered vector of membrane indices, starting at the left and going anticlockwise through the stem cell niche
 
         // Make the force for the membrane
-        MAKE_PTR(EpithelialLayerBasementMembraneForceModified, p_bm_force);
+        MAKE_PTR(EpithelialLayerBasementMembraneForce, p_bm_force);
 		p_bm_force->SetBasementMembraneParameter(bm_force); //Equivalent to beta in SJD's papers
 		p_bm_force->SetTargetCurvature(target_curvature); //This is equivalent to 1/R in SJD's papers
 		simulator.AddForce(p_bm_force);

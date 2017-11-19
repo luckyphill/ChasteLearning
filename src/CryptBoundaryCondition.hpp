@@ -5,6 +5,7 @@
 #include "AbstractCellPopulationBoundaryCondition.hpp"
 #include "BoundaryCellProperty.hpp"
 
+// Forces all cells marked with the BoundaryCellProperty to keep their y position 0
 
 class CryptBoundaryCondition : public AbstractCellPopulationBoundaryCondition<2>
 {

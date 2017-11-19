@@ -58,7 +58,7 @@ void EpithelialLayerBasementMembraneForceModified::RemoveDuplicates1D(std::vecto
  * and the second is the gel node index. Updating so that it also returns mutant-labelled cell pairs.
  */
 
-std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForceModified::GetEpithelialGelPairs(AbstractCellPopulation<2>& rCellPopulation)
+std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForceModified::GetEpithelialStromalPairs(AbstractCellPopulation<2>& rCellPopulation)
 {
 
     MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
@@ -147,6 +147,99 @@ std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForceModified
 	return node_pairs;
 }
 
+std::vector<unsigned> EpithelialLayerBasementMembraneForceModified::GetEpithelialIndices(AbstractCellPopulation<2>& rCellPopulation)
+{
+
+	MeshBasedCellPopulation<2>* cell_population = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
+
+	unsigned starting_epithelial_index = 0;
+	unsigned starting_epithelial_index_cylindrical = 0;
+    // Finding the first epithelial cell
+    for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population->Begin();
+         cell_iter != cell_population->End();
+         ++cell_iter)
+    {
+    	unsigned node_index = cell_population->GetLocationIndexUsingCell(*cell_iter);
+    	double x = cell_population->GetLocationOfCellCentre(*cell_iter)[0];
+
+    	boost::shared_ptr<AbstractCellProperty> p_type = cell_iter->GetCellProliferativeType();
+    	// If we've got a epithelial cell, check if it's at the end we want
+    	if (p_type->IsType<TransitCellProliferativeType>() || p_type->IsType<StemCellProliferativeType>())
+    	{
+    		starting_epithelial_index_cylindrical = node_index; // Grab any epithelial cell if we are using a cylindrical mesh
+    		// Loop through neighbours and count number of epithelial neighbours, if it's only one, then we have an end cell
+    		std::set<unsigned> neighbouring_node_indices = cell_population->GetNeighbouringNodeIndices(node_index);
+    		unsigned epithelial_cell_neighbour_count=0;
+            for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+         			iter != neighbouring_node_indices.end();
+         				++iter)
+    		{
+    			//count the number of epithelial neighbours
+    			if (!cell_population->IsGhostNode(*iter))
+    			{
+    				boost::shared_ptr<AbstractCellProperty> n_type = cell_population->GetCellUsingLocationIndex(*iter)->GetCellProliferativeType();
+    				if (n_type->IsType<TransitCellProliferativeType>() || n_type->IsType<StemCellProliferativeType>())
+	    			{
+	    				epithelial_cell_neighbour_count +=1;
+	    			}
+    			}
+    			
+    		}
+        	if (x < cell_population->GetWidth(0)/2 && epithelial_cell_neighbour_count == 1) // We want it to be the left hand side free end
+        	{
+        		starting_epithelial_index = node_index;
+        		break;
+        	}
+    	} 
+    }
+
+
+    if (!starting_epithelial_index)
+    {
+    	// We're assuming if no index gets assigned, then we're dealing with a cylindrical mesh
+    	// This won't be correct in 100% of cases, but it's highly unlikely that node 0 will be anything other than a ghost node
+    	// This is a temporary measure until I can work out how to test for the type of mesh we've got
+    	starting_epithelial_index = starting_epithelial_index_cylindrical;
+    }
+    // With the starting epithelial index, we can now build the epithelium as a vector of indices
+    std::set<unsigned> epithelial_indices_set;
+    std::vector<unsigned> epithelial_indices;
+
+    epithelial_indices_set.insert(starting_epithelial_index);
+    epithelial_indices.push_back(starting_epithelial_index); // Duplication of effort because it's easier to find an entry in a set than a vector
+
+    bool reached_final_epithelial_cell = false;
+    unsigned current_index = starting_epithelial_index;
+
+    while (!reached_final_epithelial_cell)
+    {
+    	reached_final_epithelial_cell = true; // Assume we're done until proven otherwise
+    	// Loop through neighbours, find an epithelial cell that isn't already accounted for
+    	std::set<unsigned> neighbouring_node_indices = cell_population->GetNeighbouringNodeIndices(current_index);
+        for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+	         			iter != neighbouring_node_indices.end();
+	         				++iter)
+	    {
+	    	// If the neighbour is a epithelial cell and not already in the list, add it and set it as the current cell
+	    	if (!cell_population->IsGhostNode(*iter))
+	    	{
+	    		boost::shared_ptr<AbstractCellProperty> n_type = cell_population->GetCellUsingLocationIndex(*iter)->GetCellProliferativeType();
+	    		if ((n_type->IsType<TransitCellProliferativeType>() || n_type->IsType<StemCellProliferativeType>()) && epithelial_indices_set.find(*iter) == epithelial_indices_set.end())
+		    	{
+        			epithelial_indices_set.insert(*iter);
+        			epithelial_indices.push_back(*iter);
+        			reached_final_epithelial_cell = false;
+        			current_index = *iter;
+        			break;
+		    	}
+	    	}
+	    	
+	    }
+    }
+
+    return epithelial_indices;
+}
+
 /*
  * Method to determine whether an element contains ghost nodes
  */
@@ -174,7 +267,7 @@ bool EpithelialLayerBasementMembraneForceModified::DoesElementContainGhostNodes(
 }
 
 /*
- * Using the vector of node pairs found in GetEpithelialGelPairs to determine the curvature
+ * Using the vector of node pairs found in GetEpithelialStromalPairs to determine the curvature
  * of the curve that passes through the midpoints of the neighbouring springs, given a epithelial-gel
  * node pairing. (Note - it ignores the end pairs because one of the common elements will contain ghost nodes, but this
  * should only crop up if you don't have periodic boundary conditions)
@@ -368,12 +461,6 @@ double EpithelialLayerBasementMembraneForceModified::GetCurvatureFromNodePair(Ab
 
     	double curvature = FindParametricCurvature(rCellPopulation, spring_midpoint_a, spring_midpoint_b, spring_midpoint_c);
 
-    	// Need to subtract the target curvature if the epithelial node lies in the crypt base
-    	c_vector<double, 2> epithelial_location = p_tissue->GetNode(epithelialNodeIndex)->rGetLocation();
-
-    	//Subtract the target curvature
-    	curvature -= mTargetCurvature;
-
     	assert(!isnan(curvature));
     	return curvature;
     }
@@ -565,9 +652,9 @@ void EpithelialLayerBasementMembraneForceModified::AddForceContribution(Abstract
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
-	// First determine the force acting on each epithelial cell due to the basement membrane
+	// First determine the force acting on each epithelial cell due to the basement epithelial
 	// Start by identifying the epithelial-gel node pairs (now also returns any apc2hit-gel pairs)
-	std::vector<c_vector<unsigned, 2> > node_pairs = GetEpithelialGelPairs(rCellPopulation);
+	std::vector<c_vector<unsigned, 2> > node_pairs = GetEpithelialStromalPairs(rCellPopulation);
 
 	// We loop over the epithelial-gel node pairs to find the force acting on that
 	// epithelial node, and the direction in which it acts
@@ -595,6 +682,11 @@ void EpithelialLayerBasementMembraneForceModified::AddForceContribution(Abstract
 		curvature_force_direction /= distance_between_nodes;
 
 		double curvature = GetCurvatureFromNodePair(rCellPopulation, epithelial_node_index, gel_node_index);
+
+		if (p_cell_epithelial->GetCellProliferativeType()->IsType<StemCellProliferativeType>())
+		{
+			curvature -= mTargetCurvature;
+		}
 
 		double basement_membrane_parameter = GetBasementMembraneParameter();
 

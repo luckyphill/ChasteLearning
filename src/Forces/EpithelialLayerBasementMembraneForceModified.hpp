@@ -84,9 +84,12 @@ public :
      */
     bool DoesElementContainGhostNodes(AbstractCellPopulation<2>& rCellPopulation, unsigned elementIndex);
 
+    // Find the epithelium
+    std::vector<unsigned> GetEpithelialIndices(AbstractCellPopulation<2>& rCellPopulation);
+
     /* Finding the connected pairs of epithelial-tissue nodes
      */
-    std::vector<c_vector<unsigned, 2> > GetEpithelialGelPairs(AbstractCellPopulation<2>& rCellPopulation);
+    std::vector<c_vector<unsigned, 2> > GetEpithelialStromalPairs(AbstractCellPopulation<2>& rCellPopulation);
 
     /* Takes an epithelial node index and a tissue node index and returns the curvature of
      * the curve passing through the midpoints of the epithelial-tissue springs of the

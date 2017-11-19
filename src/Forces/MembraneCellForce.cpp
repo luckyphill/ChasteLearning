@@ -342,7 +342,7 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 		double forceMagnitude = - membraneRestoringRate * (current_angle - target_angle); // +ve force means away from lumen
 		double forceMagnitudeLeft = length_CL * torque;
 		double forceMagnitudeRight = length_CR * torque;
-		//std::cout << "Force Magnitude: " << forceMagnitudeLeft << std::endl;
+		//std::cout << "Force Magnitude: " << forceMagnitude << std::endl;
 
 		c_vector<double, 2> forceDirection; // Trying a force like SJD
 		c_vector<double, 2> forceDirectionLeft;
@@ -374,7 +374,7 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 		// 	std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
 		// 	std::cout<< "Curvature: " << current_curvature << std::endl;
 		// 	std::cout << "forceVector: " << forceVector[0]<< ", " << forceVector[1] <<std::endl;
-		// 	std::cout << "forceMagnitude: " << forceMagnitude <<std::endl;
+		//	std::cout << "forceMagnitude: " << forceMagnitude <<std::endl;
 
 		// }
 

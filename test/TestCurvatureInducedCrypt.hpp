@@ -39,7 +39,7 @@
 class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 {
 	public:
-	void TestStartFromFlatMembraneCell() throw(Exception)
+	void xTestStartFromFlatMembraneCell() throw(Exception)
 	{
 		unsigned cells_up = 20;
 		unsigned cells_across = 40;
@@ -61,7 +61,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		double torsional_stiffness = 25.0;
 		double stiffness_ratio = 4.5; // For paneth cells
 		
-		double targetCurvatureStemStem = 1/5;
+		double targetCurvatureStemStem = 0.3;
 		double targetCurvatureStemTrans = 0; // Not implemented properly, so keep it the same as TransTrans for now
 		double targetCurvatureTransTrans = 0;
 
@@ -164,7 +164,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 
 	}
 
-	void xTestStartFromFlatMembraneForce() throw(Exception)
+	void TestStartFromFlatMembraneForce() throw(Exception)
 	{
 		unsigned cells_up = 20;
 		unsigned cells_across = 40;
@@ -176,7 +176,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 
 		//Set all the spring stiffness variables
 		double epithelial_epithelial_stiffness = 15.0; //Epithelial-epithelial spring connections
-		double epithelial_nonepithelial_stiffness = 15.0; //Epithelial-non-epithelial spring connections
+		double epithelial_nonepithelial_stiffness = 10.0; //Epithelial-non-epithelial spring connections
 		double nonepithelial_nonepithelial_stiffness = 15.0; //Non-epithelial-non-epithelial spring connections
 
 		double stiffness_ratio = 4.5; // For paneth cells
@@ -367,7 +367,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		p_bm_force->SetTargetCurvature(target_curvature);
 
 		std::cout << "6" << std::endl;
-		std::vector<c_vector<unsigned, 2> > pairs = p_bm_force->GetEpithelialGelPairs(cell_population);
+		std::vector<c_vector<unsigned, 2> > pairs = p_bm_force->GetEpithelialStromalPairs(cell_population);
 		
 		for (unsigned i=0; i<pairs.size(); i++)
 		{
