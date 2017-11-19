@@ -174,7 +174,6 @@ std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForce::GetEpi
     		}
     	}
     }
-    std::cout << node_pairs.size() << std::endl;
 	return node_pairs;
 }
 

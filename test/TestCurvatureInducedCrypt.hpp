@@ -24,6 +24,7 @@
 #include "TransitCellProliferativeType.hpp"
 #include "StemCellProliferativeType.hpp"
 #include "EpithelialLayerBasementMembraneForce.hpp"
+#include "EpithelialLayerBasementMembraneForceModified.hpp"
 #include "EpithelialLayerLinearSpringForce.hpp"
 #include "EpithelialLayerAnoikisCellKiller.hpp"
 
@@ -38,7 +39,7 @@
 class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 {
 	public:
-	void xTestStartFromFlatMembraneCell() throw(Exception)
+	void TestStartFromFlatMembraneCell() throw(Exception)
 	{
 		unsigned cells_up = 20;
 		unsigned cells_across = 40;
@@ -163,15 +164,14 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 
 	}
 
-	public:
-	void TestStartFromFlatMembraneForce() throw(Exception)
+	void xTestStartFromFlatMembraneForce() throw(Exception)
 	{
 		unsigned cells_up = 20;
 		unsigned cells_across = 40;
 		unsigned ghosts = 4;
 
 		double dt = 0.001;
-		double end_time = 100;
+		double end_time = 10;
 		double sampling_multiple = 100;
 
 		//Set all the spring stiffness variables
@@ -257,10 +257,11 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		simulator.AddForce(p_spring_force);
 		std::cout << "8" << std::endl;
 		// Basement membrane force
-        MAKE_PTR(EpithelialLayerBasementMembraneForce, p_bm_force);
+        MAKE_PTR(EpithelialLayerBasementMembraneForceModified, p_bm_force);
 		p_bm_force->SetBasementMembraneParameter(bm_force); //Equivalent to beta in SJD's papers
 		p_bm_force->SetTargetCurvature(target_curvature); //This is equivalent to 1/R in SJD's papers
 		simulator.AddForce(p_bm_force);
+		
 		std::cout << "9" << std::endl;
 		MAKE_PTR_ARGS(EpithelialLayerAnoikisCellKiller, p_anoikis_killer, (&cell_population));
 		simulator.AddCellKiller(p_anoikis_killer);
@@ -279,4 +280,114 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
         simulator.Solve();
 
 	}
+
+	void xTestIfNewMembraneForceWorks() throw(Exception)
+	{
+		// Build up a mesh then see how the forces get added in
+		unsigned cells_up = 20;
+		unsigned cells_across = 40;
+		unsigned ghosts = 4;
+
+		double dt = 0.001;
+		double end_time = 100;
+		double sampling_multiple = 100;
+
+		//Set all the spring stiffness variables
+		double epithelial_epithelial_stiffness = 15.0; //Epithelial-epithelial spring connections
+		double epithelial_nonepithelial_stiffness = 15.0; //Epithelial-non-epithelial spring connections
+		double nonepithelial_nonepithelial_stiffness = 15.0; //Non-epithelial-non-epithelial spring connections
+
+		double stiffness_ratio = 4.5; // For paneth cells
+
+		double bm_force = 10.0; //Set the basement membrane stiffness
+		double target_curvature = 0.2; //Set the target curvature, i.e. how circular the layer wants to be
+
+		std::cout << "1" << std::endl;
+		CylindricalHoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
+		Cylindrical2dMesh* p_mesh = generator.GetCylindricalMesh();
+		// HoneycombMeshGenerator generator(cells_across, cells_up, ghosts);
+		// MutableMesh<2,2>* p_mesh = generator.GetMesh();
+
+		//Sort through the indices and decide which ones are ghost nodes
+		std::vector<unsigned> real_indices = generator.GetCellLocationIndices();
+		std::cout << "2" << std::endl;
+		boost::shared_ptr<AbstractCellProperty> p_state = CellPropertyRegistry::Instance()->Get<WildTypeCellMutationState>();
+		boost::shared_ptr<AbstractCellProperty> p_trans_type = CellPropertyRegistry::Instance()->Get<TransitCellProliferativeType>();
+		boost::shared_ptr<AbstractCellProperty> p_diff_type = CellPropertyRegistry::Instance()->Get<DifferentiatedCellProliferativeType>();
+		boost::shared_ptr<AbstractCellProperty> p_stem_type = CellPropertyRegistry::Instance()->Get<StemCellProliferativeType>();
+
+
+		//create a vector to store the cells; it is currently empty
+		std::vector<CellPtr> cells;
+		std::cout << "3" << std::endl;
+		//go through the real indices and build some cells
+		for (unsigned i = 0; i<real_indices.size(); i++)
+		{	
+			//Set cell cycle
+			UniformCellCycleModel* p_cycle_model = new UniformCellCycleModel();
+			//p_cycle_model->SetCellCycleDuration(); //randomly chooses a duration
+			double birth_time = 12.0*RandomNumberGenerator::Instance()->ranf(); //Randomly set birth time to stop pulsing behaviour
+			p_cycle_model->SetBirthTime(-birth_time);
+			
+
+			CellPtr p_cell(new Cell(p_state, p_cycle_model));
+
+			unsigned cell_index = real_indices[i];
+			double x = p_mesh->GetNode(cell_index)->rGetLocation()[0];
+			double y = p_mesh->GetNode(cell_index)->rGetLocation()[1];
+
+			p_cell->SetCellProliferativeType(p_diff_type); //set the type to differentiated if it's not a ghost node - types will be reset as follows
+
+			//add stems cells to the base of the crypt
+			if ( y >= (cells_up - 1.5) * sqrt(3) /2 )
+			{
+				if (x > cells_across/2 - 5 && x < cells_across/2 + 5)
+				{
+					p_cell->SetCellProliferativeType(p_stem_type); //set the cell to stem if it's in the middle bunch
+				} else 
+				{
+					p_cell->SetCellProliferativeType(p_trans_type);
+				}
+				
+			}
+
+			p_cell->InitialiseCellCycleModel();
+
+			cells.push_back(p_cell);
+		}
+
+		std::cout << "4" << std::endl;
+		//Pull it all together
+		MeshBasedCellPopulationWithGhostNodes<2> cell_population(*p_mesh, cells, real_indices);
+		std::cout << "5" << std::endl;
+		cell_population.AddPopulationWriter<VoronoiDataWriter>();
+
+		MAKE_PTR(EpithelialLayerBasementMembraneForceModified, p_bm_force);
+		p_bm_force->SetBasementMembraneParameter(bm_force); //Equivalent to beta in SJD's papers
+		p_bm_force->SetTargetCurvature(target_curvature);
+
+		std::cout << "6" << std::endl;
+		std::vector<c_vector<unsigned, 2> > pairs = p_bm_force->GetEpithelialGelPairs(cell_population);
+		
+		for (unsigned i=0; i<pairs.size(); i++)
+		{
+			c_vector<double, 2> pair = pairs[i];
+			std::cout << "Epithelial node: " << pair[0] << " Basement node: " << pair[1] << std::endl;
+		}
+
+		MAKE_PTR(EpithelialLayerBasementMembraneForce, p_bm_force2);
+		p_bm_force2->SetBasementMembraneParameter(bm_force); //Equivalent to beta in SJD's papers
+		p_bm_force2->SetTargetCurvature(target_curvature);
+		std::vector<c_vector<unsigned, 2> > pairs2 = p_bm_force2->GetEpithelialGelPairs(cell_population);
+
+		std::cout << "Old way \n" << std::endl;
+		for (unsigned i=0; i<pairs2.size(); i++)
+		{
+			c_vector<double, 2> pair = pairs2[i];
+			std::cout << "Epithelial node: " << pair[0] << " Basement node: " << pair[1] << std::endl;
+		}
+	}
 };
+
+
+

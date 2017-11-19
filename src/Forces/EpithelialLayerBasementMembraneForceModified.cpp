@@ -1,4 +1,4 @@
-#include "EpithelialLayerBasementMembraneForce.hpp"
+#include "EpithelialLayerBasementMembraneForceModified.hpp"
 #include "AbstractCellProperty.hpp"
 #include "Debug.hpp"
 
@@ -11,42 +11,42 @@
  * To avoid warnings on some compilers, C++ style initialization of member
  * variables should be done in the order they are defined in the header file.
  */
-EpithelialLayerBasementMembraneForce::EpithelialLayerBasementMembraneForce()
+EpithelialLayerBasementMembraneForceModified::EpithelialLayerBasementMembraneForceModified()
    :  AbstractForce<2>(),
    mBasementMembraneParameter(DOUBLE_UNSET),
    mTargetCurvature(DOUBLE_UNSET)
 {
 }
 
-EpithelialLayerBasementMembraneForce::~EpithelialLayerBasementMembraneForce()
+EpithelialLayerBasementMembraneForceModified::~EpithelialLayerBasementMembraneForceModified()
 {
 
 }
 
 
-void EpithelialLayerBasementMembraneForce::SetBasementMembraneParameter(double basementMembraneParameter)
+void EpithelialLayerBasementMembraneForceModified::SetBasementMembraneParameter(double basementMembraneParameter)
 {
 	mBasementMembraneParameter = basementMembraneParameter;
 }
 
-double EpithelialLayerBasementMembraneForce::GetBasementMembraneParameter()
+double EpithelialLayerBasementMembraneForceModified::GetBasementMembraneParameter()
 {
 	return mBasementMembraneParameter;
 }
 
 
-void EpithelialLayerBasementMembraneForce::SetTargetCurvature(double targetCurvature)
+void EpithelialLayerBasementMembraneForceModified::SetTargetCurvature(double targetCurvature)
 {
 	mTargetCurvature = targetCurvature;
 }
 
 
-double EpithelialLayerBasementMembraneForce::GetTargetCurvature()
+double EpithelialLayerBasementMembraneForceModified::GetTargetCurvature()
 {
 	return mTargetCurvature;
 }
 
-void EpithelialLayerBasementMembraneForce::RemoveDuplicates1D(std::vector<unsigned>& rVectorWithDuplicates)
+void EpithelialLayerBasementMembraneForceModified::RemoveDuplicates1D(std::vector<unsigned>& rVectorWithDuplicates)
 {
     std::sort(rVectorWithDuplicates.begin(), rVectorWithDuplicates.end());
     rVectorWithDuplicates.erase(std::unique(rVectorWithDuplicates.begin(), rVectorWithDuplicates.end()), rVectorWithDuplicates.end());
@@ -58,7 +58,7 @@ void EpithelialLayerBasementMembraneForce::RemoveDuplicates1D(std::vector<unsign
  * and the second is the gel node index. Updating so that it also returns mutant-labelled cell pairs.
  */
 
-std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForce::GetEpithelialGelPairs(AbstractCellPopulation<2>& rCellPopulation)
+std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForceModified::GetEpithelialGelPairs(AbstractCellPopulation<2>& rCellPopulation)
 {
 
     MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
@@ -74,130 +74,76 @@ std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForce::GetEpi
     {
     	boost::shared_ptr<AbstractCellProperty> p_type = cell_iter->GetCellProliferativeType();
 
-    	unsigned node_index = cell_population->GetLocationIndexUsingCell(*cell_iter);
-    	
-    	// If we've got a epithelial cell
-    	if ((cell_iter->GetCellProliferativeType()->IsType<StemCellProliferativeType>() ||  cell_iter->GetCellProliferativeType()->IsType<TransitCellProliferativeType>()) && !cell_iter->IsDead())
+    	unsigned node_index = rCellPopulation.GetLocationIndexUsingCell(*cell_iter);
+    	// If we've got an epithelial cell
+    	if ((p_type->IsType<StemCellProliferativeType>() ||  p_type->IsType<TransitCellProliferativeType>()) && !cell_iter->IsDead())
     	{
     		// When we do, get the neighbours
-    		std::set<unsigned> neighbouring_node_indices = cell_population->GetNeighbouringNodeIndices(node_index);
-    		unsigned lumen_neighbour_count=0;
+    		std::set<unsigned> neighbouring_node_indices = rCellPopulation.GetNeighbouringNodeIndices(node_index);
+
             for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
          			iter != neighbouring_node_indices.end();
          				++iter)
     		{
     			//count the number of membrane neighbours
-    			if (cell_population->GetCellUsingLocationIndex(*iter)->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+    			if (!p_tissue->IsGhostNode(*iter))
     			{
-    				lumen_neighbour_count +=1;
+    				CellPtr iter_cell = rCellPopulation.GetCellUsingLocationIndex(*iter);
+	    			if (iter_cell->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+	    			{
+	    				pair[0] = node_index;
+	    				pair[1] = *iter;
+	    				node_pairs.push_back(pair);
+
+	    			}
     			}
-    			
-    		}
-    	} 
-
-    	gel_nodes.push_back(node_index)
-
-    	// Need these to not be stromal cells (and not dead)
-    	if ( (p_type->IsType<DifferentiatedCellProliferativeType>()==false) && !cell_iter->IsDead() )	// an epithelial cell
-    	{
-    		Node<2>* p_node = p_tissue->GetNodeCorrespondingToCell(*cell_iter);	// Pointer to node
-    		unsigned node_index = p_node->GetIndex();
-
-    		assert(!(p_tissue->IsGhostNode(node_index)));  // bit unnecessary at this stage but paranoia demands it
-
-    		// ITERATE OVER CONTAINING ELEMENTS and only work with those that DO NOT contain ghost nodes
-
-    		std::vector<unsigned> gel_nodes;
-
-    		for (Node<2>::ContainingElementIterator iter = p_node->ContainingElementsBegin();
-		         iter != p_node->ContainingElementsEnd();
-		         ++iter)
-    		{
-    			bool element_contains_ghost_nodes = false;
-
-    			// Get a pointer to the element
-    			Element<2,2>* p_element = p_tissue->rGetMesh().GetElement(*iter);
-
-    			// ITERATE OVER NODES owned by this element
-    			for (unsigned local_index=0; local_index<3; local_index++)
-    			{
-    				unsigned nodeBGlobalIndex = p_element->GetNodeGlobalIndex(local_index);
-
-    				if (p_tissue->IsGhostNode(nodeBGlobalIndex) == true)
-    				{
-    					element_contains_ghost_nodes = true;
-    					break; 				// This should break out of the inner for loop
-    				}
-    			}
-
-				if (element_contains_ghost_nodes==false)
-				{
-                    // ITERATE OVER NODES owned by this element
-                    for (unsigned local_index=0; local_index<3; local_index++)
-                    {
-                        unsigned nodeBGlobalIndex = p_element->GetNodeGlobalIndex(local_index);
-
-                        CellPtr p_cell = rCellPopulation.GetCellUsingLocationIndex(nodeBGlobalIndex);
-
-						if (p_cell->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType	>()==true)
-						{
-							// Store the index of each gel node that is attached to the epithelial
-							// node. There will be repetitions due to iterating over neighbouring elements
-							gel_nodes.push_back(nodeBGlobalIndex);
-						}
-                    }
-				}
-			}
-
-    		// Remove any nodes that have been found twice
-    		RemoveDuplicates1D(gel_nodes);
-
-    		// Now construct the vector of node pairs
-    		for (unsigned i=0; i<gel_nodes.size(); i++)
-    		{
-    			pair[0] = node_index;
-    			pair[1] = gel_nodes[i];
-    			node_pairs.push_back(pair);
-
-    			// Check that these node share a common element
-				bool has_common_element = false;
-
-				// The elements that contain this epithelial node:
-				std::set<unsigned> epithelial_elements = rCellPopulation.GetNode(node_index)->rGetContainingElementIndices();
-				assert(epithelial_elements.size() != 0);
-
-				// The elements that contain the gel node:
-				std::set<unsigned> gel_elements = rCellPopulation.GetNode(gel_nodes[i])->rGetContainingElementIndices();
-				assert(gel_elements.size() != 0);
-
-				// Loop over all elements that contain the gel node
-				for (Node<2>::ContainingElementIterator elt_it = rCellPopulation.GetNode(gel_nodes[i])->ContainingElementsBegin();
-				         elt_it != rCellPopulation.GetNode(gel_nodes[i])->ContainingElementsEnd();
-				         ++elt_it)
-				{
-					unsigned elt_index = *elt_it;
-
-					bool elt_contains_ghost_nodes = DoesElementContainGhostNodes(rCellPopulation, elt_index);
-
-					// Keep only those elements that also contain the epithelial node, but do not have ghost nodes
-					if ( (elt_contains_ghost_nodes == false) && (epithelial_elements.find(elt_index) != epithelial_elements.end()) )
-					{
-						// Common element
-						has_common_element = true;
-						break;
-					}
-				}
-
-				if (!has_common_element)
-				{
-					TRACE("No common element between:");
-					PRINT_2_VARIABLES(node_index,gel_nodes[i]);
-				}
-				assert(has_common_element);
     		}
     	}
     }
-    std::cout << node_pairs.size() << std::endl;
+
+	// A check to make sure things are all G
+	for (unsigned i=0; i<node_pairs.size(); i++)
+	{
+		pair = node_pairs[i];
+		unsigned node_index = pair[0];
+		unsigned gel_node_index = pair[1];
+
+		// Check that these node share a common element
+		bool has_common_element = false;
+
+		// The elements that contain this epithelial node:
+		std::set<unsigned> epithelial_elements = rCellPopulation.GetNode(node_index)->rGetContainingElementIndices();
+		assert(epithelial_elements.size() != 0);
+
+		// The elements that contain the gel node:
+		std::set<unsigned> gel_elements = rCellPopulation.GetNode(gel_node_index)->rGetContainingElementIndices();
+		assert(gel_elements.size() != 0);
+
+		// Loop over all elements that contain the gel node
+		for (Node<2>::ContainingElementIterator elt_it = rCellPopulation.GetNode(gel_node_index)->ContainingElementsBegin();
+		         elt_it != rCellPopulation.GetNode(gel_node_index)->ContainingElementsEnd();
+		         ++elt_it)
+		{
+			unsigned elt_index = *elt_it;
+
+			bool elt_contains_ghost_nodes = DoesElementContainGhostNodes(rCellPopulation, elt_index);
+
+			// Keep only those elements that also contain the epithelial node, but do not have ghost nodes
+			if ( (elt_contains_ghost_nodes == false) && (epithelial_elements.find(elt_index) != epithelial_elements.end()) )
+			{
+				// Common element
+				has_common_element = true;
+				break;
+			}
+		}
+
+		if (!has_common_element)
+		{
+			TRACE("No common element between:");
+			PRINT_2_VARIABLES(node_index,gel_node_index);
+		}
+		assert(has_common_element);
+	}
 	return node_pairs;
 }
 
@@ -205,7 +151,7 @@ std::vector<c_vector<unsigned, 2> > EpithelialLayerBasementMembraneForce::GetEpi
  * Method to determine whether an element contains ghost nodes
  */
 
-bool EpithelialLayerBasementMembraneForce::DoesElementContainGhostNodes(AbstractCellPopulation<2>& rCellPopulation, unsigned elementIndex)
+bool EpithelialLayerBasementMembraneForceModified::DoesElementContainGhostNodes(AbstractCellPopulation<2>& rCellPopulation, unsigned elementIndex)
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
@@ -235,7 +181,7 @@ bool EpithelialLayerBasementMembraneForce::DoesElementContainGhostNodes(Abstract
  * Updating this so that it will still find the curvature if one of the epithelial cells is a mutant cell, eg. apc2 hit
  */
 
-double EpithelialLayerBasementMembraneForce::GetCurvatureFromNodePair(AbstractCellPopulation<2>& rCellPopulation, unsigned epithelialNodeIndex,
+double EpithelialLayerBasementMembraneForceModified::GetCurvatureFromNodePair(AbstractCellPopulation<2>& rCellPopulation, unsigned epithelialNodeIndex,
 																unsigned gelNodeIndex)
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
@@ -439,7 +385,7 @@ double EpithelialLayerBasementMembraneForce::GetCurvatureFromNodePair(AbstractCe
  * from the left->right vector
  */
 
-double EpithelialLayerBasementMembraneForce::GetCurvatureFromMidpoints(AbstractCellPopulation<2>& rCellPopulation,
+double EpithelialLayerBasementMembraneForceModified::GetCurvatureFromMidpoints(AbstractCellPopulation<2>& rCellPopulation,
 																c_vector<double, 2> leftMidpoint,
 																c_vector<double, 2> centreMidpoint,
 																c_vector<double, 2> rightMidpoint)
@@ -466,7 +412,7 @@ double EpithelialLayerBasementMembraneForce::GetCurvatureFromMidpoints(AbstractC
 * but left->right = -(right-> left).
 */
 
-double EpithelialLayerBasementMembraneForce::FindParametricCurvature(AbstractCellPopulation<2>& rCellPopulation,
+double EpithelialLayerBasementMembraneForceModified::FindParametricCurvature(AbstractCellPopulation<2>& rCellPopulation,
 															c_vector<double, 2> leftMidpoint,
 															c_vector<double, 2> centreMidpoint,
 															c_vector<double, 2> rightMidpoint)
@@ -502,7 +448,7 @@ double EpithelialLayerBasementMembraneForce::FindParametricCurvature(AbstractCel
  * excluding those elements that have ghost nodes
  */
 
-unsigned EpithelialLayerBasementMembraneForce::GetNumContainingElementsWithoutGhostNodes(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex)
+unsigned EpithelialLayerBasementMembraneForceModified::GetNumContainingElementsWithoutGhostNodes(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex)
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
@@ -544,7 +490,7 @@ unsigned EpithelialLayerBasementMembraneForce::GetNumContainingElementsWithoutGh
  * triangulation, excluding ghost nodes.
  */
 
-std::set<unsigned> EpithelialLayerBasementMembraneForce::GetNeighbouringNodeIndices(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex)
+std::set<unsigned> EpithelialLayerBasementMembraneForceModified::GetNeighbouringNodeIndices(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex)
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
@@ -584,7 +530,7 @@ std::set<unsigned> EpithelialLayerBasementMembraneForce::GetNeighbouringNodeIndi
  * FALSE if cell remains in the monolayer
  */
 
-bool EpithelialLayerBasementMembraneForce::HasEpithelialCellDetachedFromBasementMembrane(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex)
+bool EpithelialLayerBasementMembraneForceModified::HasEpithelialCellDetachedFromBasementMembrane(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex)
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
@@ -615,7 +561,7 @@ bool EpithelialLayerBasementMembraneForce::HasEpithelialCellDetachedFromBasement
 	return has_cell_detached;
 }
 //Method overriding the virtual method for AbstractForce. The crux of what really needs to be done.
-void EpithelialLayerBasementMembraneForce::AddForceContribution(AbstractCellPopulation<2>& rCellPopulation)
+void EpithelialLayerBasementMembraneForceModified::AddForceContribution(AbstractCellPopulation<2>& rCellPopulation)
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
@@ -660,7 +606,7 @@ void EpithelialLayerBasementMembraneForce::AddForceContribution(AbstractCellPopu
 
 }
 
-void EpithelialLayerBasementMembraneForce::OutputForceParameters(out_stream& rParamsFile)
+void EpithelialLayerBasementMembraneForceModified::OutputForceParameters(out_stream& rParamsFile)
 {
 	*rParamsFile <<  "\t\t\t<BasementMembraneParameter>"<<  mBasementMembraneParameter << "</BasementMembraneParameter> \n";
 	*rParamsFile <<  "\t\t\t<TargetCurvature>"<< mTargetCurvature << "</TargetCurvature> \n";
@@ -671,4 +617,4 @@ void EpithelialLayerBasementMembraneForce::OutputForceParameters(out_stream& rPa
 
 // Serialization for Boost >= 1.36
 #include "SerializationExportWrapperForCpp.hpp"
-CHASTE_CLASS_EXPORT(EpithelialLayerBasementMembraneForce)
+CHASTE_CLASS_EXPORT(EpithelialLayerBasementMembraneForceModified)
