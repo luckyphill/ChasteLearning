@@ -294,7 +294,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		unsigned ghosts = 4;
 
 		double dt = 0.005;
-		double end_time = 100;
+		double end_time = 1;
 		double sampling_multiple = 10;
 
 		//Set all the spring stiffness variables

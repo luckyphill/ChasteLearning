@@ -46,7 +46,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 		unsigned ghosts = 4;
 
 		double dt = 0.001;
-		double end_time = 100;
+		double end_time = 10;
 		double sampling_multiple = 100;
 
 		//Set all the spring stiffness variables

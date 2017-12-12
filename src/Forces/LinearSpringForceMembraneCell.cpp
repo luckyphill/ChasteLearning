@@ -277,7 +277,10 @@ c_vector<double, SPACE_DIM> LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>
         }
     }
 
-
+    // std::cout << "Node pair: " << nodeAGlobalIndex << ", " << nodeBGlobalIndex << std::endl;
+    // std::cout << "Spring constant: " << spring_constant << std::endl;
+    // std::cout << "Direction x: " << unitForceDirection[0] << " Direction y: " << unitForceDirection[1] << std::endl;
+    // std::cout << "Length change: " << length_change << std::endl;
     return spring_constant * length_change * unitForceDirection;
 
     
@@ -372,9 +375,6 @@ void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalEpithelialS
     assert(stromalEpithelialSpringStiffness > 0.0);
     mStromalEpithelialSpringStiffness = stromalEpithelialSpringStiffness;
 }
-
-
-
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMeinekeDivisionRestingSpringLength(double divisionRestingSpringLength)

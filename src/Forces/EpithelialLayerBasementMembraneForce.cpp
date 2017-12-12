@@ -625,8 +625,8 @@ void EpithelialLayerBasementMembraneForce::AddForceContribution(AbstractCellPopu
 		curvature_force_direction /= distance_between_nodes;
 
 		double curvature = GetCurvatureFromNodePair(rCellPopulation, epithelial_node_index, gel_node_index);
-		std::cout << "curvature: " << curvature << std::endl;
-		std::cout << "Node: " << epithelial_node_index << std::endl;
+		//std::cout << "curvature: " << curvature << std::endl;
+		//std::cout << "Node: " << epithelial_node_index << std::endl;
 
 		double basement_membrane_parameter = GetBasementMembraneParameter();
 

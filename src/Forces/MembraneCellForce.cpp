@@ -131,6 +131,7 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 
 	bool contact_with_stem = false;
 	bool contact_with_trans = false;
+	bool contact_only_with_ghost = true;
 
 	unsigned centre_cell_index = cell_population->GetLocationIndexUsingCell(centre_cell);
 	std::set<unsigned> neighbouring_node_indices = rCellPopulation.GetNeighbouringNodeIndices(centre_cell_index);
@@ -140,7 +141,7 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 	         				++iter)
 	{
 		if (!cell_population->IsGhostNode(*iter))
-		{	
+		{
 			CellPtr neighbour = cell_population->GetCellUsingLocationIndex(*iter);
 			if (!neighbour->IsDead())
 			{
@@ -148,10 +149,12 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 				if (neighbour->GetCellProliferativeType()->IsType<TransitCellProliferativeType>())
 				{
 					contact_with_trans = true;
+					contact_only_with_ghost = false;
 				}
 				if (neighbour->GetCellProliferativeType()->IsType<StemCellProliferativeType>())
 				{
 					contact_with_stem = true;
+					contact_only_with_ghost = false;
 				}
 			}
 		}
@@ -172,6 +175,13 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 	{
 		target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
 		//target_angle = 2.8;
+	}
+
+	if (contact_only_with_ghost)
+	{
+		// This is used for testing an isolated membrane in a field of ghost nodes
+		target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
+		//target_angle = 2.9;
 	}
 
 	return target_angle;
@@ -304,7 +314,7 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 		double current_curvature = FindParametricCurvature(rCellPopulation, left_location, centre_location, right_location);
 		//std::cout << "Successfully got angle and curvature" << std::endl;
 		
-		if (abs(current_curvature) < 1e-5)
+		if (std::abs(current_curvature) < 1e-5)
 		{
 			// Close enough
 			current_curvature = 0.0;
