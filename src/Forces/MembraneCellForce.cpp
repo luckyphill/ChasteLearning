@@ -131,6 +131,7 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 
 	bool contact_with_stem = false;
 	bool contact_with_trans = false;
+	bool contact_with_stromal = false;
 	bool contact_only_with_ghost = true;
 
 	unsigned centre_cell_index = cell_population->GetLocationIndexUsingCell(centre_cell);
@@ -156,6 +157,11 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 					contact_with_stem = true;
 					contact_only_with_ghost = false;
 				}
+				if (neighbour->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>())
+				{
+					contact_with_stromal = true;
+					contact_only_with_ghost = false;
+				}
 			}
 		}
 	}
@@ -177,11 +183,17 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 		//target_angle = 2.8;
 	}
 
+	if (contact_with_stromal && !contact_with_stem && !contact_with_trans)
+	{
+		// This is used for testing an isolated membrane in a field of ghost nodes
+		target_angle = 3.05;
+	}
+
 	if (contact_only_with_ghost)
 	{
 		// This is used for testing an isolated membrane in a field of ghost nodes
-		target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
-		//target_angle = 2.9;
+		//target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
+		target_angle = 2.8;
 	}
 
 	return target_angle;
