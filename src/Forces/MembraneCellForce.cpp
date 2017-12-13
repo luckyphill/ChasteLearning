@@ -14,7 +14,7 @@
  */
 MembraneCellForce::MembraneCellForce()
    :  AbstractForce<2>(),
-   mBasementMembraneTorsionalStiffness(DOUBLE_UNSET),
+   mBasementMembraneTorsionalStiffness(5.0),
    mTargetCurvatureStemStem(DOUBLE_UNSET),
    mTargetCurvatureStemTrans(DOUBLE_UNSET),
    mTargetCurvatureTransTrans(DOUBLE_UNSET)
@@ -187,59 +187,11 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 	return target_angle;
 }
 
-std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulation<2>& rCellPopulation)
+std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulation<2>& rCellPopulation, unsigned starting_membrane_index)
 {
 
 	MeshBasedCellPopulation<2>* cell_population = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 
-	unsigned starting_membrane_index = 0;
-	unsigned starting_membrane_index_cylindrical = 0;
-    // Finding the first membrane cell
-    for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population->Begin();
-         cell_iter != cell_population->End();
-         ++cell_iter)
-    {
-    	unsigned node_index = cell_population->GetLocationIndexUsingCell(*cell_iter);
-    	double x = cell_population->GetLocationOfCellCentre(*cell_iter)[0];
-    	
-    	// If we've got a membrane cell, check if it's at the end we want
-    	if (cell_iter->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>())
-    	{
-    		starting_membrane_index_cylindrical = node_index; // Grab any membrane cell if we are using a cylindrical mesh
-    		// Loop through neighbours and count number of membrane neighbours, if it's only one, then we have an end cell
-    		std::set<unsigned> neighbouring_node_indices = cell_population->GetNeighbouringNodeIndices(node_index);
-    		unsigned membrane_cell_neighbour_count=0;
-            for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
-         			iter != neighbouring_node_indices.end();
-         				++iter)
-    		{
-    			//count the number of membrane neighbours
-    			if (!cell_population->IsGhostNode(*iter))
-    			{
-    				if (cell_population->GetCellUsingLocationIndex(*iter)->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>())
-	    			{
-	    				membrane_cell_neighbour_count +=1;
-	    			}
-    			}
-    			
-    		}
-        	if (x < cell_population->GetWidth(0)/2 && membrane_cell_neighbour_count == 1) // We want it to be the left hand side free end
-        	{
-        		starting_membrane_index = node_index;
-        		break;
-        	}
-    	} 
-    }
-
-
-    if (!starting_membrane_index)
-    {
-    	// We're assuming if no index gets assigned, then we're dealing with a cylindrical mesh
-    	// This won't be correct in 100% of cases, but it's highly unlikely that node 0 will be anything other than a ghost node
-    	// This is a temporary measure until I can work out how to test for the type of mesh we've
-    	starting_membrane_index = starting_membrane_index_cylindrical;
-    }
-    // With the starting membrane index, we can now build the membrane as a vector of indices
     std::set<unsigned> membrane_indices_set;
     std::vector<unsigned> membrane_indices;
 
@@ -278,121 +230,199 @@ std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulati
     return membrane_indices;
 }
 
+std::vector<std::vector<unsigned>> MembraneCellForce::GetMembraneSections(AbstractCellPopulation<2>& rCellPopulation)
+{
+	MeshBasedCellPopulation<2>* cell_population = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
+	
+	// Need to determine the bits of membrane floating around
+	std::set<unsigned> freeMembraneIndices;
+
+	std::vector<std::vector<unsigned>> membraneSections;
+
+	unsigned node_index_for_cylindrical = 0;
+
+	for (AbstractCellPopulation<2>::Iterator cell_iter = cell_population->Begin();
+         cell_iter != cell_population->End();
+         ++cell_iter)
+    {
+    	unsigned node_index = cell_population->GetLocationIndexUsingCell(*cell_iter);
+
+
+    	if (cell_iter->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>())
+    	{
+    		std::set<unsigned> neighbouring_node_indices = cell_population->GetNeighbouringNodeIndices(node_index);
+    		unsigned membrane_cell_neighbour_count=0;
+            for (std::set<unsigned>::iterator iter = neighbouring_node_indices.begin();
+         			iter != neighbouring_node_indices.end();
+         				++iter)
+    		{
+    			//count the number of membrane neighbours
+    			if (!cell_population->IsGhostNode(*iter))
+    			{
+    				if (cell_population->GetCellUsingLocationIndex(*iter)->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>())
+	    			{
+	    				membrane_cell_neighbour_count +=1;
+	    			}
+    			}
+    			
+    		}
+        	if (membrane_cell_neighbour_count == 1) // if we have a free end
+        	{
+        		freeMembraneIndices.insert(node_index);
+        	}
+        	if (membrane_cell_neighbour_count == 2) // if we have an internal membrane cell
+        	{
+        		// If we are using cylindrical mesh then there may be no free ends, so need to pick a random cell
+        		node_index_for_cylindrical = node_index;
+        	}
+    	} 
+    }
+
+    if (freeMembraneIndices.empty() && node_index_for_cylindrical)
+    {
+    	std::vector<unsigned> membraneSectionIndices = GetMembraneIndices(rCellPopulation, node_index_for_cylindrical);
+	    membraneSections.push_back(membraneSectionIndices);
+    }else
+    {
+    	assert(int(freeMembraneIndices.size()) == 2 * int(freeMembraneIndices.size()/2));
+
+    	// Loop through set of membrane free ends and create the membrane sections
+	    for (std::set<unsigned>::iterator iter = freeMembraneIndices.begin();
+	         			iter != freeMembraneIndices.end();
+	         				++iter)
+	    {
+	    	std::vector<unsigned> membraneSectionIndices = GetMembraneIndices(rCellPopulation, *iter);
+	    	membraneSections.push_back(membraneSectionIndices);
+	    	unsigned lastNode = membraneSectionIndices.back();
+	    	assert(freeMembraneIndices.find(lastNode) != freeMembraneIndices.end());
+	    	//Get rid of the last index from the set because we've accounted for it now
+	    	freeMembraneIndices.erase(lastNode);
+	    }
+    }
+    // make sure we have an even number of entries in the set, if we don't something has gone wrong big time
+    
+    return membraneSections;
+}
+
+
 //Method overriding the virtual method for AbstractForce. The crux of what really needs to be done.
 void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPopulation)
 {
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 	
 	// Need to determine the restoring force on the membrane putting it back to it's preferred shape
-	std::vector<unsigned> membraneIndices = GetMembraneIndices(rCellPopulation);
+	std::vector<std::vector<unsigned>> membraneSections = GetMembraneSections(rCellPopulation);
 
 	//std::cout << "The number of membrane cells is: " << membraneIndices.size() << std::endl;
 
-	// We loop over the epithelial-gel node pairs to find the force acting on that
-	// epithelial node, and the direction in which it acts
-	for (unsigned i=0; i<membraneIndices.size()-2; i++)
+	for (std::vector<std::vector<unsigned>>::iterator iter = membraneSections.begin(); iter != membraneSections.end(); ++iter)
 	{
-		
-		unsigned left_node = membraneIndices[i];
-		unsigned centre_node = membraneIndices[i+1];
-		unsigned right_node = membraneIndices[i+2];
-
-		//std::cout << "About to set cells MembraneCellForce" <<std::endl;
-		CellPtr left_cell = p_tissue->GetCellUsingLocationIndex(left_node);
-		CellPtr centre_cell = p_tissue->GetCellUsingLocationIndex(centre_node);
-		CellPtr right_cell = p_tissue->GetCellUsingLocationIndex(right_node);
-		//std::cout << "Successfully set cells MembraneCellForce" <<std::endl;
-
-		c_vector<double, 2> left_location = p_tissue->GetLocationOfCellCentre(left_cell);
-		c_vector<double, 2> right_location = p_tissue->GetLocationOfCellCentre(right_cell);
-		c_vector<double, 2> centre_location = p_tissue->GetLocationOfCellCentre(centre_cell);
-		
-
-		
-		//std::cout << "About to get angle and curvature" <<std::endl;
-		double current_angle = GetAngleFromTriplet(rCellPopulation, left_location, centre_location, right_location);
-		double current_curvature = FindParametricCurvature(rCellPopulation, left_location, centre_location, right_location);
-		//std::cout << "Successfully got angle and curvature" << std::endl;
-		
-		if (std::abs(current_curvature) < 1e-5)
+		std::vector<unsigned> membraneIndices = *iter;
+	// We loop through the membrane sections to set the restoring forces
+		for (unsigned i=0; i<membraneIndices.size()-2; i++)
 		{
-			// Close enough
-			current_curvature = 0.0;
-			// We need to use the sign of the curvature to determine the angle correctly
-			// Extrememly small curvatures due to precision errors might play havock with this
+			
+			unsigned left_node = membraneIndices[i];
+			unsigned centre_node = membraneIndices[i+1];
+			unsigned right_node = membraneIndices[i+2];
+
+			//std::cout << "About to set cells MembraneCellForce" <<std::endl;
+			CellPtr left_cell = p_tissue->GetCellUsingLocationIndex(left_node);
+			CellPtr centre_cell = p_tissue->GetCellUsingLocationIndex(centre_node);
+			CellPtr right_cell = p_tissue->GetCellUsingLocationIndex(right_node);
+			//std::cout << "Successfully set cells MembraneCellForce" <<std::endl;
+
+			c_vector<double, 2> left_location = p_tissue->GetLocationOfCellCentre(left_cell);
+			c_vector<double, 2> right_location = p_tissue->GetLocationOfCellCentre(right_cell);
+			c_vector<double, 2> centre_location = p_tissue->GetLocationOfCellCentre(centre_cell);
+			
+
+			
+			//std::cout << "About to get angle and curvature" <<std::endl;
+			double current_angle = GetAngleFromTriplet(rCellPopulation, left_location, centre_location, right_location);
+			double current_curvature = FindParametricCurvature(rCellPopulation, left_location, centre_location, right_location);
+			//std::cout << "Successfully got angle and curvature" << std::endl;
+			
+			if (std::abs(current_curvature) < 1e-5)
+			{
+				// Close enough
+				current_curvature = 0.0;
+				// We need to use the sign of the curvature to determine the angle correctly
+				// Extrememly small curvatures due to precision errors might play havock with this
+			}
+
+			// The method of calculating the angle is not oriented by the lumen, so need to adjust
+			if (current_curvature < 0)
+			{
+				current_angle = 2 * M_PI - current_angle;
+			}
+
+			//std::cout << "About to get target angle"  <<std::endl;
+			double target_angle = GetTargetAngle(rCellPopulation, centre_cell, left_location, centre_location, right_location);
+			//std::cout << "Successfully got target angle"  <<std::endl;
+
+			//std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
+			//std::cout << "Left Node: " << left_location[0] << ", " << left_location[1] << "\nCentre Node: " << centre_location[0]<< ", " << centre_location[1] << "\nRight Node: " << right_location[0]<< ", " << right_location[1] << std::endl;
+
+			double torque = mBasementMembraneTorsionalStiffness * (current_angle - target_angle); // Positive torque means force points into lumen
+			//std::cout << "Torque: " << torque << std::endl;
+			c_vector<double, 2> vector_CL = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,left_location);
+			c_vector<double, 2> vector_CR = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,right_location);
+			c_vector<double, 2> vector_LR = p_tissue->rGetMesh().GetVectorFromAtoB(left_location,right_location); // Used for determining where lumen is
+
+			double membraneRestoringRate = mBasementMembraneTorsionalStiffness; // For the sake of consistant naming until I fix things up
+
+
+			double length_CL = norm_2(vector_CL);
+			double length_CR = norm_2(vector_CR);
+			double length_LR = norm_2(vector_LR);
+
+			// Determine the force vectors applied to the left and right nodes
+			double forceMagnitude = - membraneRestoringRate * (current_angle - target_angle); // +ve force means away from lumen
+			double forceMagnitudeLeft = length_CL * torque;
+			double forceMagnitudeRight = length_CR * torque;
+			//std::cout << "Force Magnitude: " << forceMagnitude << std::endl;
+
+			c_vector<double, 2> forceDirection; // Trying a force like SJD
+			c_vector<double, 2> forceDirectionLeft;
+			c_vector<double, 2> forceDirectionRight;
+
+			// Use the CL and CR vectors to determine the line that the force will act on
+			// If we have a vector (a, b), then the vector (b, -a) is perpendicular and creates a clockwise rotation when added to the end of (a,b)
+			// while (-b, a) creates an anticlockwise rotation
+			// forceDirectionLeft will always end up pointing into the lumen, and forceDirectionRight will always point out
+			// Given we have decided that the actual direction of the force is encoded in the sign on the torque this is all we need to do
+			
+			forceDirection[0] = - vector_LR[1] / length_LR; // This must be perpendicular to the LR vector
+			forceDirection[1] = vector_LR[0] / length_LR;
+
+			forceDirectionLeft[0] = vector_CL[1] / length_CL;
+			forceDirectionLeft[1] = - vector_CL[0] / length_CL;
+
+			forceDirectionRight[0] = - vector_CR[1] / length_CR;
+			forceDirectionRight[1] = vector_CR[0] / length_CR;
+
+			c_vector<double, 2> forceVector = forceMagnitude * forceDirection;
+			c_vector<double, 2> forceVectorLeft = forceMagnitudeLeft * forceDirectionLeft;
+			c_vector<double, 2> forceVectorRight = forceMagnitudeRight * forceDirectionRight;
+
+			// if (centre_node == 470)
+			// {
+			// 	std::cout << "\nNode: " << centre_node  <<std::endl;
+			// 	std::cout << "Torque: " << torque << std::endl;
+			// 	std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
+			// 	std::cout<< "Curvature: " << current_curvature << std::endl;
+			// 	std::cout << "forceVector: " << forceVector[0]<< ", " << forceVector[1] <<std::endl;
+			//	std::cout << "forceMagnitude: " << forceMagnitude <<std::endl;
+
+			// }
+
+			//std::cout << "About to add force contribution"  <<std::endl;
+			rCellPopulation.GetNode(centre_node)->AddAppliedForceContribution(forceVector);
+			//rCellPopulation.GetNode(left_node)->AddAppliedForceContribution(forceVectorLeft);
+			//rCellPopulation.GetNode(right_node)->AddAppliedForceContribution(forceVectorRight);
+			//std::cout << "Successfully added force contribution"  <<std::endl;
 		}
-
-		// The method of calculating the angle is not oriented by the lumen, so need to adjust
-		if (current_curvature < 0)
-		{
-			current_angle = 2 * M_PI - current_angle;
-		}
-
-		//std::cout << "About to get target angle"  <<std::endl;
-		double target_angle = GetTargetAngle(rCellPopulation, centre_cell, left_location, centre_location, right_location);
-		//std::cout << "Successfully got target angle"  <<std::endl;
-
-		//std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
-		//std::cout << "Left Node: " << left_location[0] << ", " << left_location[1] << "\nCentre Node: " << centre_location[0]<< ", " << centre_location[1] << "\nRight Node: " << right_location[0]<< ", " << right_location[1] << std::endl;
-
-		double torque = mBasementMembraneTorsionalStiffness * (current_angle - target_angle); // Positive torque means force points into lumen
-		//std::cout << "Torque: " << torque << std::endl;
-		c_vector<double, 2> vector_CL = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,left_location);
-		c_vector<double, 2> vector_CR = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,right_location);
-		c_vector<double, 2> vector_LR = p_tissue->rGetMesh().GetVectorFromAtoB(left_location,right_location); // Used for determining where lumen is
-
-		double membraneRestoringRate = mBasementMembraneTorsionalStiffness; // For the sake of consistant naming until I fix things up
-
-
-		double length_CL = norm_2(vector_CL);
-		double length_CR = norm_2(vector_CR);
-		double length_LR = norm_2(vector_LR);
-
-		// Determine the force vectors applied to the left and right nodes
-		double forceMagnitude = - membraneRestoringRate * (current_angle - target_angle); // +ve force means away from lumen
-		double forceMagnitudeLeft = length_CL * torque;
-		double forceMagnitudeRight = length_CR * torque;
-		//std::cout << "Force Magnitude: " << forceMagnitude << std::endl;
-
-		c_vector<double, 2> forceDirection; // Trying a force like SJD
-		c_vector<double, 2> forceDirectionLeft;
-		c_vector<double, 2> forceDirectionRight;
-
-		// Use the CL and CR vectors to determine the line that the force will act on
-		// If we have a vector (a, b), then the vector (b, -a) is perpendicular and creates a clockwise rotation when added to the end of (a,b)
-		// while (-b, a) creates an anticlockwise rotation
-		// forceDirectionLeft will always end up pointing into the lumen, and forceDirectionRight will always point out
-		// Given we have decided that the actual direction of the force is encoded in the sign on the torque this is all we need to do
-		
-		forceDirection[0] = - vector_LR[1] / length_LR; // This must be perpendicular to the LR vector
-		forceDirection[1] = vector_LR[0] / length_LR;
-
-		forceDirectionLeft[0] = vector_CL[1] / length_CL;
-		forceDirectionLeft[1] = - vector_CL[0] / length_CL;
-
-		forceDirectionRight[0] = - vector_CR[1] / length_CR;
-		forceDirectionRight[1] = vector_CR[0] / length_CR;
-
-		c_vector<double, 2> forceVector = forceMagnitude * forceDirection;
-		c_vector<double, 2> forceVectorLeft = forceMagnitudeLeft * forceDirectionLeft;
-		c_vector<double, 2> forceVectorRight = forceMagnitudeRight * forceDirectionRight;
-
-		// if (centre_node == 470)
-		// {
-		// 	std::cout << "\nNode: " << centre_node  <<std::endl;
-		// 	std::cout << "Torque: " << torque << std::endl;
-		// 	std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
-		// 	std::cout<< "Curvature: " << current_curvature << std::endl;
-		// 	std::cout << "forceVector: " << forceVector[0]<< ", " << forceVector[1] <<std::endl;
-		//	std::cout << "forceMagnitude: " << forceMagnitude <<std::endl;
-
-		// }
-
-		//std::cout << "About to add force contribution"  <<std::endl;
-		rCellPopulation.GetNode(centre_node)->AddAppliedForceContribution(forceVector);
-		//rCellPopulation.GetNode(left_node)->AddAppliedForceContribution(forceVectorLeft);
-		//rCellPopulation.GetNode(right_node)->AddAppliedForceContribution(forceVectorRight);
-		//std::cout << "Successfully added force contribution"  <<std::endl;
 	}
 
 }

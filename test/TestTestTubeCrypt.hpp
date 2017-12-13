@@ -43,7 +43,7 @@
 class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 {
 	public:
-	void xTestGeneratedCells() throw(Exception)
+	void TestTubeCryptCell() throw(Exception)
 	{
 		unsigned cells_up = 30;
 		unsigned cells_across = 30;
@@ -287,7 +287,7 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 
 	};
 
-	void TestTubeCryptForce() throw(Exception)
+	void xTestTubeCryptForce() throw(Exception)
 	{
 		unsigned cells_up = 30;
 		unsigned cells_across = 30;

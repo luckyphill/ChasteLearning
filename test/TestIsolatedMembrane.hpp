@@ -27,14 +27,19 @@
 #include "CryptBoundaryCondition.hpp"
 #include "BoundaryCellProperty.hpp"
 
+#include "TransitCellProliferativeType.hpp"
+#include "UniformCellCycleModel.hpp"
+#include "NodesOnlyMesh.hpp"
+#include "NodeBasedCellPopulation.hpp"
+#include "GeneralisedLinearSpringForce.hpp"
 
 class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 {
 	public:
-	void TestIsolatedFlatMembrane() throw(Exception)
+	void xTestIsolatedFlatMembrane() throw(Exception)
 	{
 		unsigned cells_up = 10;
-		unsigned cells_across = 30;
+		unsigned cells_across = 50;
 
 		double dt = 0.005;
 		double end_time = 100;
@@ -42,7 +47,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 
 		//Set all the spring stiffness variables
 		double epithelialStiffness = 15.0; //Epithelial-epithelial spring connections
-		double membraneStiffness = 60.0; //Stiffness of membrane to membrane spring connections
+		double membraneStiffness = 30.0; //Stiffness of membrane to membrane spring connections
 		double stromalStiffness = 15.0;
 
 		double epithelialMembraneStiffness = 15.0; //Epithelial-non-epithelial spring connections
@@ -123,6 +128,44 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
         simulator.AddForce(p_membrane_force);
 
         simulator.Solve();
+
+	}
+
+	void TestIsolatedMembraneCloseNodes() throw(Exception)
+	{
+		std::vector<Node<2>*> nodes;
+        nodes.push_back(new Node<2>(0u,  false,  0.5, 0.0, 0.0));
+        nodes.push_back(new Node<2>(1u,  false,  -0.5, 0.0, 0.0));
+        nodes.push_back(new Node<2>(2u,  false,  0.0, 0.5, 0.0));
+        nodes.push_back(new Node<2>(3u,  false,  0.0, -0.5, 0.0));
+
+        NodesOnlyMesh<2> mesh;
+        mesh.ConstructNodesWithoutMesh(nodes, 1.5);
+
+        std::vector<CellPtr> cells;
+        MAKE_PTR(TransitCellProliferativeType, p_transit_type);
+        CellsGenerator<UniformCellCycleModel, 2> cells_generator;
+        cells_generator.GenerateBasicRandom(cells, mesh.GetNumNodes(), p_transit_type);
+
+        NodeBasedCellPopulation<2> cell_population(mesh, cells);
+
+        OffLatticeSimulation<2> simulator(cell_population);
+        simulator.SetOutputDirectory("NodeBasedSpheroid");
+        simulator.SetSamplingTimestepMultiple(12);
+        simulator.SetEndTime(10.0);
+
+        MAKE_PTR(GeneralisedLinearSpringForce<2>, p_force);
+        simulator.AddForce(p_force);
+
+        simulator.Solve();
+
+        TS_ASSERT_EQUALS(cell_population.GetNumRealCells(), 8u);
+        TS_ASSERT_DELTA(SimulationTime::Instance()->GetTime(), 10.0, 1e-10);
+
+        for (unsigned i=0; i<nodes.size(); i++)
+        {
+            delete nodes[i];
+        }
 
 	}
 

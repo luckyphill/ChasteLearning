@@ -39,7 +39,7 @@
 class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 {
 	public:
-	void xTestStartFromFlatMembraneCell() throw(Exception)
+	void TestStartFromFlatMembraneCell() throw(Exception)
 	{
 		unsigned cells_up = 20;
 		unsigned cells_across = 40;
@@ -47,7 +47,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 
 		double dt = 0.001;
 		double end_time = 10;
-		double sampling_multiple = 100;
+		double sampling_multiple = 1;
 
 		//Set all the spring stiffness variables
 		double epithelialStiffness = 15.0; //Epithelial-epithelial spring connections
@@ -164,7 +164,7 @@ class TestCurvatureInducedCrypt : public AbstractCellBasedTestSuite
 
 	}
 
-	void TestStartFromFlatMembraneForce() throw(Exception)
+	void xTestStartFromFlatMembraneForce() throw(Exception)
 	{
 		unsigned cells_up = 20;
 		unsigned cells_across = 40;

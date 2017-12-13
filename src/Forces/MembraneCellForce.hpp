@@ -76,7 +76,7 @@ public :
                                                                         c_vector<double, 2> leftCell,
                                                                         c_vector<double, 2> centreCell,
                                                                         c_vector<double, 2> rightCell);
-    std::vector<unsigned> GetMembraneIndices(AbstractCellPopulation<2>& rCellPopulation);
+    std::vector<unsigned> GetMembraneIndices(AbstractCellPopulation<2>& rCellPopulation, unsigned starting_membrane_index);
 
     /**
      * Pure virtual, must implement
@@ -155,6 +155,10 @@ public :
     /* Method to return a boolean that indicates whether this node/cell has detached from the basement membrane
      */
     bool HasEpithelialCellDetachedFromBasementMembrane(AbstractCellPopulation<2>& rCellPopulation, unsigned nodeIndex);
+
+
+    // Returns each distinct membrane
+    std::vector<std::vector<unsigned>> GetMembraneSections(AbstractCellPopulation<2>& rCellPopulation);
 
    
 
