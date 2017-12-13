@@ -212,27 +212,27 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
         unsigned ghosts = 3;
         unsigned node_counter = 0;
 
-        double epithelialStiffness = 1.50; //Epithelial-epithelial spring connections
-		double membraneStiffness = 2.0; //Stiffness of membrane to membrane spring connections
-		double stromalStiffness = 2.0;
+        // Values that produce a working simulation in the comments
+        double epithelialStiffness = 1.50; 			// 1.5
+		double membraneStiffness = 5.0; 			// 5.0
+		double stromalStiffness = 2.0; 				// 2.0
 
-		double epithelialMembraneStiffness = 10.0; //Epithelial-non-epithelial spring connections
-		double membraneStromalStiffness = 1.0; //Non-epithelial-non-epithelial spring connections
-		double stromalEpithelialStiffness = 10.0;
+		double epithelialMembraneStiffness = 1.0; 	// 1.0
+		double membraneStromalStiffness = 1.0; 		// 1.0
+		double stromalEpithelialStiffness = 1.0;	// 1.0
 
-		double epithelialRestLength = 1.0;
-		double membraneRestLength = 0.2;
-		double stromalRestLength = 1.0;
+		double epithelialRestLength = 1.0;			// 1.0
+		double membraneRestLength = 0.2;			// 0.2
+		double stromalRestLength = 1.0;				// 1.0
 
-		double epithelialMembraneRestLength = 1.0;
-		double membraneStromalRestLength = 1.0;
-		double stromalEpithelialRestLength = 1.0;
+		double epithelialMembraneRestLength = 1.0;	// 1.0
+		double membraneStromalRestLength = 0.8;		// 0.8
+		double stromalEpithelialRestLength = 1.0;	// 1.0
 
-		double torsional_stiffness = 10.0;
-		double stiffness_ratio = 4.5; // For paneth cells
+		double torsional_stiffness = 10.0;			// 10.0
 		
-		double targetCurvatureStemStem = 0.3;
-		double targetCurvatureStemTrans = 0; // Not implemented properly, so keep it the same as TransTrans for now
+		double targetCurvatureStemStem = 0.3;		// not used, see MembraneCellForce.cpp lines 186 - 190
+		double targetCurvatureStemTrans = 0;
 		double targetCurvatureTransTrans = 0;
 
         for (unsigned i = 0; i < cells_across; i++)
