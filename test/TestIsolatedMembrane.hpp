@@ -41,7 +41,7 @@
 class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 {
 	public:
-	void xTestIsolatedFlatMembrane() throw(Exception)
+	void TestIsolatedFlatMembrane() throw(Exception)
 	{
 		unsigned cells_up = 10;
 		unsigned cells_across = 50;
@@ -52,7 +52,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 
 		//Set all the spring stiffness variables
 		double epithelialStiffness = 15.0; //Epithelial-epithelial spring connections
-		double membraneStiffness = 30.0; //Stiffness of membrane to membrane spring connections
+		double membraneStiffness = 3.0; //Stiffness of membrane to membrane spring connections
 		double stromalStiffness = 15.0;
 
 		double epithelialMembraneStiffness = 15.0; //Epithelial-non-epithelial spring connections
@@ -79,7 +79,6 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 			double x = p_mesh->GetNode(cell_index)->rGetLocation()[0];
 			double y = p_mesh->GetNode(cell_index)->rGetLocation()[1];
 
-			//Make the curved crypt base
 			if ( y > int(cells_up/2) && y < int(cells_up/2 + 1) && x <cells_across - 5 && x >5)
 			{
 				real_indices.push_back(cell_index);
@@ -88,6 +87,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 
 		boost::shared_ptr<AbstractCellProperty> p_membrane = CellPropertyRegistry::Instance()->Get<MembraneCellProliferativeType>();
 		boost::shared_ptr<AbstractCellProperty> p_state = CellPropertyRegistry::Instance()->Get<WildTypeCellMutationState>();
+		MAKE_PTR(BoundaryCellProperty, p_boundary);
 
 		std::vector<CellPtr> cells;
 
@@ -99,6 +99,12 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 			p_cell->SetCellProliferativeType(p_membrane);
 
 			p_cell->InitialiseCellCycleModel();
+
+			if (i==0 || i ==1)
+			{
+				// Fix the first two cells in space
+				p_cell->AddCellProperty(p_boundary);
+			}
 
 			cells.push_back(p_cell); 
 		}
@@ -131,6 +137,9 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
         p_membrane_force->SetBasementMembraneTorsionalStiffness(torsional_stiffness);
         p_membrane_force->SetTargetCurvatures(targetCurvatureStemStem, targetCurvatureStemTrans, targetCurvatureTransTrans);
         simulator.AddForce(p_membrane_force);
+
+        MAKE_PTR_ARGS(CryptBoundaryCondition, p_bc, (&cell_population));
+        simulator.AddCellPopulationBoundaryCondition(p_bc);
 
         simulator.Solve();
 
@@ -194,7 +203,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 
 	}
 
-	void TestInsertCloseMembrane() throw(Exception)
+	void xTestInsertCloseMembrane() throw(Exception)
 	{
 		// In this we introduce a row of membrane point cells with a small rest length
 		std::vector<Node<2>*> nodes;
@@ -211,6 +220,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
         unsigned cells_across = 10;
         unsigned ghosts = 3;
         unsigned node_counter = 0;
+        unsigned num_membrane_nodes = 60;			// 60
 
         // Values that produce a working simulation in the comments
         double epithelialStiffness = 1.50; 			// 1.5
@@ -218,7 +228,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 		double stromalStiffness = 2.0; 				// 2.0
 
 		double epithelialMembraneStiffness = 1.0; 	// 1.0
-		double membraneStromalStiffness = 1.0; 		// 1.0
+		double membraneStromalStiffness = 5.0; 		// 5.0
 		double stromalEpithelialStiffness = 1.0;	// 1.0
 
 		double epithelialRestLength = 1.0;			// 1.0
@@ -226,12 +236,20 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 		double stromalRestLength = 1.0;				// 1.0
 
 		double epithelialMembraneRestLength = 1.0;	// 1.0
-		double membraneStromalRestLength = 0.8;		// 0.8
+		double membraneStromalRestLength = 0.4;		// 0.4
 		double stromalEpithelialRestLength = 1.0;	// 1.0
+
+		double mEpithelialCutOffLength; // Epithelial covers stem and transit
+	    double mMembraneCutOffLength;
+	    double mStromalCutOffLength; // Stromal is the differentiated "filler" cells
+
+	    double mEpithelialMembraneCutOffLength;
+	    double membraneStromalCutOffLength = 0.6;	// 0.6 If this is too small the stromal cells never attach to the membrane cells
+	    double mStromalEpithelialCutOffLength;
 
 		double torsional_stiffness = 10.0;			// 10.0
 		
-		double targetCurvatureStemStem = 0.3;		// not used, see MembraneCellForce.cpp lines 186 - 190
+		double targetCurvatureStemStem = 0.3;		// not used in this test, see MembraneCellForce.cpp lines 186 - 190
 		double targetCurvatureStemTrans = 0;
 		double targetCurvatureTransTrans = 0;
 
@@ -257,7 +275,6 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
         	}
         }
 
-		unsigned num_membrane_nodes = 40;
         double membrane_spacing = double(cells_across -0.5)/num_membrane_nodes;
 
         for (double x = 0.0; x < cells_across -0.5; x += membrane_spacing)
@@ -363,6 +380,8 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 		p_force->SetEpithelialMembraneRestLength(epithelialMembraneRestLength);
 		p_force->SetMembraneStromalRestLength(membraneStromalRestLength);
 		p_force->SetStromalEpithelialRestLength(stromalEpithelialRestLength);
+
+		p_force->SetMembraneStromalCutOffLength(membraneStromalCutOffLength);
         simulator.AddForce(p_force);
 
         MAKE_PTR(MembraneCellForce, p_membrane_force);

@@ -186,14 +186,14 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 	if (contact_with_stromal && !contact_with_stem && !contact_with_trans)
 	{
 		// This is used for testing an isolated membrane in a field of ghost nodes
-		target_angle = 3.05;
+		target_angle = 3.1;
 	}
 
 	if (contact_only_with_ghost)
 	{
 		// This is used for testing an isolated membrane in a field of ghost nodes
 		//target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
-		target_angle = 2.8;
+		target_angle = 3.1;
 	}
 
 	return target_angle;

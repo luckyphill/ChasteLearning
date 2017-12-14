@@ -58,6 +58,12 @@ LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::LinearSpringSmallMembraneC
     mEpithelialMembraneRestLength(1.0),
     mMembraneStromalRestLength(1.0),
     mStromalEpithelialRestLength(1.0),
+    mEpithelialCutOffLength(1.5), // Epithelial covers stem and transit
+    mMembraneCutOffLength(1.5),
+    mStromalCutOffLength(1.5), // Stromal is the differentiated "filler" cells
+    mEpithelialMembraneCutOffLength(1.5),
+    mMembraneStromalCutOffLength(1.5),
+    mStromalEpithelialCutOffLength(1.5),
     mPanethCellStiffnessRatio(1.0)
 {
 }
@@ -94,12 +100,7 @@ c_vector<double, SPACE_DIM> LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>
 
     // Get the unit vector parallel to the line joining the two nodes
     c_vector<double, SPACE_DIM> unitForceDirection;
-    /*
-     * We use the mesh method GetVectorFromAtoB() to compute the direction of the
-     * unit vector along the line joining the two nodes, rather than simply subtract
-     * their positions, because this method can be overloaded (e.g. to enforce a
-     * periodic boundary in Cylindrical2dMesh).
-     */
+
     unitForceDirection = rCellPopulation.rGetMesh().GetVectorFromAtoB(node_a_location, node_b_location);
 
     // Calculate the distance between the two nodes
@@ -110,25 +111,12 @@ c_vector<double, SPACE_DIM> LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>
     unitForceDirection /= distance_between_nodes;
 
     /*
-     * If mUseCutOffLength has been set, then there is zero force between
-     * two nodes located a distance apart greater than mMechanicsCutOffLength in AbstractTwoBodyInteractionForce.
-     */
-    if (this->mUseCutOffLength)
-    {
-        if (distance_between_nodes >= this->GetCutOffLength())
-        {
-            return zero_vector<double>(SPACE_DIM); // c_vector<double,SPACE_DIM>() is not guaranteed to be fresh memory
-        }
-    }
-
-    /*
      * Calculate the rest length of the spring connecting the two nodes with a default
      * value of 1.0.
      */
 
     // We have three types of cells, with 6 different possible pairings as demarked by the 6 different spring stiffnesses
     // Need to check which types we have and set spring_constant accordingly
-    // Note: Much of this method accounts for the possibilty that a Node Based population might be passed in. The following assumes only Mesh Based
     // There is also a method that gives the possibilty of a variable spring constant based on whether the spring is in tension or compression
     // this is not implemented here
 
@@ -160,7 +148,11 @@ c_vector<double, SPACE_DIM> LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>
             spring_constant = mMembraneSpringStiffness;
         }
         if (stromalB)
-        {
+        {   
+            if (distance_between_nodes >= mMembraneStromalCutOffLength)
+            {
+                return zero_vector<double>(SPACE_DIM);
+            }
             rest_length_final = mMembraneStromalRestLength;
             spring_constant = mMembraneStromalSpringStiffness;
         }
@@ -175,6 +167,10 @@ c_vector<double, SPACE_DIM> LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>
     {
         if (membraneB)
         {
+            if (distance_between_nodes >= mMembraneStromalCutOffLength)
+            {
+                return zero_vector<double>(SPACE_DIM);
+            }
             rest_length_final = mMembraneStromalRestLength;
             spring_constant = mMembraneStromalSpringStiffness;
         }
@@ -407,6 +403,45 @@ void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalEpithelialR
 
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialCutOffLength(double epithelialCutOffLength)
+{
+    assert(epithelialCutOffLength> 0.0);
+    mEpithelialCutOffLength = epithelialCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMembraneCutOffLength(double membraneCutOffLength)
+{
+    assert(membraneCutOffLength > 0.0);
+    mMembraneCutOffLength = membraneCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalCutOffLength(double stromalCutOffLength)
+{
+    assert(stromalCutOffLength > 0.0);
+    mStromalCutOffLength = stromalCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialMembraneCutOffLength(double epithelialMembraneCutOffLength)
+{
+    assert(epithelialMembraneCutOffLength > 0.0);
+    mEpithelialMembraneCutOffLength = epithelialMembraneCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMembraneStromalCutOffLength(double membraneStromalCutOffLength)
+{
+    assert(membraneStromalCutOffLength > 0.0);
+    mMembraneStromalCutOffLength = membraneStromalCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalEpithelialCutOffLength(double stromalEpithelialCutOffLength)
+{
+    assert(stromalEpithelialCutOffLength > 0.0);
+    mStromalEpithelialCutOffLength = stromalEpithelialCutOffLength;
+}
+
+
+
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMeinekeDivisionRestingSpringLength(double divisionRestingSpringLength)
 {
     assert(divisionRestingSpringLength <= 1.0);
@@ -447,6 +482,13 @@ void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::OutputForceParameters
     *rParamsFile << "\t\t\t<EpithelialMembraneRestLength>" << mEpithelialMembraneRestLength << "</EpithelialMembraneRestLength>\n";
     *rParamsFile << "\t\t\t<MembranetromalRestLength>" << mMembraneStromalRestLength << "</MembranetromalRestLength>\n";
     *rParamsFile << "\t\t\t<StromalEpithelialRestLength>" << mStromalEpithelialRestLength << "</StromalEpithelialRestLength>\n";
+
+    *rParamsFile << "\t\t\t<EpithelialCutOffLength>" << mEpithelialCutOffLength << "</EpithelialCutOffLength>\n";
+    *rParamsFile << "\t\t\t<MembraneCutOffLength>" << mMembraneCutOffLength << "</MembraneCutOffLength>\n";
+    *rParamsFile << "\t\t\t<StromalCutOffLength>" << mStromalCutOffLength << "</StromalCutOffLength>\n";
+    *rParamsFile << "\t\t\t<EpithelialMembraneCutOffLength>" << mEpithelialMembraneCutOffLength << "</EpithelialMembraneCutOffLength>\n";
+    *rParamsFile << "\t\t\t<MembranetromalCutOffLength>" << mMembraneStromalCutOffLength << "</MembranetromalCutOffLength>\n";
+    *rParamsFile << "\t\t\t<StromalEpithelialCutOffLength>" << mStromalEpithelialCutOffLength << "</StromalEpithelialCutOffLength>\n";
 
     *rParamsFile << "\t\t\t<MeinekeDivisionRestingSpringLength>" << mMeinekeDivisionRestingSpringLength << "</MeinekeDivisionRestingSpringLength>\n";
     *rParamsFile << "\t\t\t<MeinekeSpringGrowthDuration>" << mMeinekeSpringGrowthDuration << "</MeinekeSpringGrowthDuration>\n";

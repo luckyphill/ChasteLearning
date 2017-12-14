@@ -114,6 +114,13 @@ protected:
     double mMembraneStromalRestLength;
     double mStromalEpithelialRestLength;
 
+    double mEpithelialCutOffLength; // Epithelial covers stem and transit
+    double mMembraneCutOffLength;
+    double mStromalCutOffLength; // Stromal is the differentiated "filler" cells
+    double mEpithelialMembraneCutOffLength;
+    double mMembraneStromalCutOffLength;
+    double mStromalEpithelialCutOffLength;
+
 
     /**
      * Initial resting spring length after cell division.
@@ -211,6 +218,13 @@ public:
     void SetEpithelialMembraneRestLength(double epithelialMembraneRestLength);
     void SetMembraneStromalRestLength(double membraneStromalRestLength);
     void SetStromalEpithelialRestLength(double stromalEpithelialRestLength);
+
+    void SetEpithelialCutOffLength(double epithelialCutOffLength); // Epithelial covers stem and transit
+    void SetMembraneCutOffLength(double membraneCutOffLength);
+    void SetStromalCutOffLength(double stromalCutOffLength); // Stromal is the differentiated "filler" cells
+    void SetEpithelialMembraneCutOffLength(double epithelialMembraneCutOffLength);
+    void SetMembraneStromalCutOffLength(double membraneStromalCutOffLength);
+    void SetStromalEpithelialCutOffLength(double stromalEpithelialCutOffLength);
 
     /**
      * Set mMeinekeDivisionRestingSpringLength.

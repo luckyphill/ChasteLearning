@@ -4,6 +4,7 @@
 
 #include "AbstractCellPopulationBoundaryCondition.hpp"
 #include "BoundaryCellProperty.hpp"
+#include "Debug.hpp"
 
 // Forces all cells marked with the BoundaryCellProperty to keep their y position 0
 
@@ -37,7 +38,10 @@ public:
 
             if (cell_iter->HasCellProperty<BoundaryCellProperty>())
             {
-                p_node->rGetModifiableLocation()[1] = 0;
+                // PRINT_VARIABLE(rOldLocations[p_node])
+
+                //p_node->rGetModifiableLocation()[0] = rOldLocations[p_node][0];
+                p_node->rGetModifiableLocation()[1] = 5.19; //rOldLocations[p_node][1];
             }
         }
     }
@@ -52,7 +56,7 @@ public:
         {
             c_vector<double, 2> cell_location = this->mpCellPopulation->GetLocationOfCellCentre(*cell_iter);
             double y_coordinate = cell_location(1);
-            if (cell_iter->HasCellProperty<BoundaryCellProperty>() && y_coordinate != 0)
+            if (cell_iter->HasCellProperty<BoundaryCellProperty>() && y_coordinate != 5.19)
             {
                 condition_satisfied = false;
                 break;
