@@ -192,8 +192,8 @@ double MembraneCellForce::GetTargetAngle(AbstractCellPopulation<2>& rCellPopulat
 	if (contact_only_with_ghost)
 	{
 		// This is used for testing an isolated membrane in a field of ghost nodes
-		//target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
-		target_angle = 3.1;
+		target_angle = acos(length_AC * mTargetCurvatureStemStem / 2) + acos(length_AB * mTargetCurvatureStemStem / 2);
+		//target_angle = 3.1;
 	}
 
 	return target_angle;
@@ -338,22 +338,16 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 			unsigned centre_node = membraneIndices[i+1];
 			unsigned right_node = membraneIndices[i+2];
 
-			//std::cout << "About to set cells MembraneCellForce" <<std::endl;
 			CellPtr left_cell = p_tissue->GetCellUsingLocationIndex(left_node);
 			CellPtr centre_cell = p_tissue->GetCellUsingLocationIndex(centre_node);
 			CellPtr right_cell = p_tissue->GetCellUsingLocationIndex(right_node);
-			//std::cout << "Successfully set cells MembraneCellForce" <<std::endl;
 
 			c_vector<double, 2> left_location = p_tissue->GetLocationOfCellCentre(left_cell);
 			c_vector<double, 2> right_location = p_tissue->GetLocationOfCellCentre(right_cell);
 			c_vector<double, 2> centre_location = p_tissue->GetLocationOfCellCentre(centre_cell);
 			
-
-			
-			//std::cout << "About to get angle and curvature" <<std::endl;
 			double current_angle = GetAngleFromTriplet(rCellPopulation, left_location, centre_location, right_location);
 			double current_curvature = FindParametricCurvature(rCellPopulation, left_location, centre_location, right_location);
-			//std::cout << "Successfully got angle and curvature" << std::endl;
 			
 			if (std::abs(current_curvature) < 1e-5)
 			{
@@ -369,15 +363,10 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 				current_angle = 2 * M_PI - current_angle;
 			}
 
-			//std::cout << "About to get target angle"  <<std::endl;
 			double target_angle = GetTargetAngle(rCellPopulation, centre_cell, left_location, centre_location, right_location);
-			//std::cout << "Successfully got target angle"  <<std::endl;
-
-			//std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
-			//std::cout << "Left Node: " << left_location[0] << ", " << left_location[1] << "\nCentre Node: " << centre_location[0]<< ", " << centre_location[1] << "\nRight Node: " << right_location[0]<< ", " << right_location[1] << std::endl;
 
 			double torque = mBasementMembraneTorsionalStiffness * (current_angle - target_angle); // Positive torque means force points into lumen
-			//std::cout << "Torque: " << torque << std::endl;
+
 			c_vector<double, 2> vector_CL = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,left_location);
 			c_vector<double, 2> vector_CR = p_tissue->rGetMesh().GetVectorFromAtoB(centre_location,right_location);
 			c_vector<double, 2> vector_LR = p_tissue->rGetMesh().GetVectorFromAtoB(left_location,right_location); // Used for determining where lumen is
@@ -391,9 +380,8 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 
 			// Determine the force vectors applied to the left and right nodes
 			double forceMagnitude = - membraneRestoringRate * (current_angle - target_angle); // +ve force means away from lumen
-			double forceMagnitudeLeft = length_CL * torque;
-			double forceMagnitudeRight = length_CR * torque;
-			//std::cout << "Force Magnitude: " << forceMagnitude << std::endl;
+			double forceMagnitudeLeft = torque/length_CL;
+			double forceMagnitudeRight = torque/length_CR;
 
 			c_vector<double, 2> forceDirection; // Trying a force like SJD
 			c_vector<double, 2> forceDirectionLeft;
@@ -418,22 +406,9 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 			c_vector<double, 2> forceVectorLeft = forceMagnitudeLeft * forceDirectionLeft;
 			c_vector<double, 2> forceVectorRight = forceMagnitudeRight * forceDirectionRight;
 
-			// if (centre_node == 470)
-			// {
-			// 	std::cout << "\nNode: " << centre_node  <<std::endl;
-			// 	std::cout << "Torque: " << torque << std::endl;
-			// 	std::cout<< "Angle: " << current_angle << "\nTarget Angle: " << target_angle << std::endl;
-			// 	std::cout<< "Curvature: " << current_curvature << std::endl;
-			// 	std::cout << "forceVector: " << forceVector[0]<< ", " << forceVector[1] <<std::endl;
-			//	std::cout << "forceMagnitude: " << forceMagnitude <<std::endl;
-
-			// }
-
-			//std::cout << "About to add force contribution"  <<std::endl;
-			rCellPopulation.GetNode(centre_node)->AddAppliedForceContribution(forceVector);
-			//rCellPopulation.GetNode(left_node)->AddAppliedForceContribution(forceVectorLeft);
-			//rCellPopulation.GetNode(right_node)->AddAppliedForceContribution(forceVectorRight);
-			//std::cout << "Successfully added force contribution"  <<std::endl;
+			//rCellPopulation.GetNode(centre_node)->AddAppliedForceContribution(forceVector);
+			rCellPopulation.GetNode(left_node)->AddAppliedForceContribution(forceVectorLeft);
+			rCellPopulation.GetNode(right_node)->AddAppliedForceContribution(forceVectorRight);
 		}
 	}
 

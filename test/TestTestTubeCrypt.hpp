@@ -40,6 +40,8 @@
 #include "CryptBoundaryCondition.hpp"
 #include "BoundaryCellProperty.hpp"
 
+#include "LinearSpringSmallMembraneCell.hpp" // Just to make sure this force works in a different simulation
+
 class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 {
 	public:
@@ -192,8 +194,8 @@ class TestBasicTestTubeCrypt : public AbstractCellBasedTestSuite
 		MAKE_PTR_ARGS(AnoikisCellKillerMembraneCell, p_anoikis_killer, (&cell_population));
 		simulator.AddCellKiller(p_anoikis_killer);
 
-        MAKE_PTR(GeneralisedLinearSpringForce<2>, p_force);
-        simulator.AddForce(p_force);
+        // MAKE_PTR(GeneralisedLinearSpringForce<2>, p_force);
+        // simulator.AddForce(p_force);
 
         //Basement membrane force
 

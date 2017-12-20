@@ -21,7 +21,7 @@
 			*Enterocytes/Coloncytes*: Columnar Absorptive cells that produce enzymes for digestion
 			*Enteroendocrine* Cells: Release hormones to regulate digestive enzymes
 		Transit Amplifying cells:
-			Occupy the lower two thirds (not exactly the bottom, but must appear there)
+			Occupy the lower two thirds (not exactly the bottom, but probably appear there)
 			They proliferate and move up the crypt wall, at a certain height, they are termnially
 			differentiated and stop dividing
 			They become Paneth, Goblet, Colono, or Enteroendocrine
@@ -77,9 +77,9 @@
 			{What does superficial mean in this context?}
 			Sometimes vertically oriented strips of smooth muscle between crypts
 			Prolifereative zone expanded
-			V600E BRAF mutation
-			Burst of Prolifereative activity and supression of apoptosis
-			{What kind of apoptosis? Anoikis?}
+			V600E BRAF mutation - shortens the cell cycle
+			Burst of Proliferative activity and supression of apoptosis
+			{What kind of apoptosis?}
 		GCHP:
 			Thickened mucosa
 			crowded crypts

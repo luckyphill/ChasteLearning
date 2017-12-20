@@ -9,5 +9,5 @@ CHASTE
 - 
 
 BIOLOGY
-- Complete llist of things that I know and questions that need to be answered
+- Complete list of things that I know and questions that need to be answered
 - Be prepared for meeting with Susi
