@@ -427,14 +427,12 @@ void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::OutputForceParameters
 // Explicit instantiation
 /////////////////////////////////////////////////////////////////////////////
 
-// template class LinearSpringForceMembraneCell<1,1>;
-// template class LinearSpringForceMembraneCell<1,2>;
-// template class LinearSpringForceMembraneCell<2,2>;
-// template class LinearSpringForceMembraneCell<1,3>;
-// template class LinearSpringForceMembraneCell<2,3>;
-// template class LinearSpringForceMembraneCell<3,3>;
-
-template class LinearSpringForceMembraneCell<3>;
+template class LinearSpringForceMembraneCell<1,1>;
+template class LinearSpringForceMembraneCell<1,2>;
+template class LinearSpringForceMembraneCell<2,2>;
+template class LinearSpringForceMembraneCell<1,3>;
+template class LinearSpringForceMembraneCell<2,3>;
+template class LinearSpringForceMembraneCell<3,3>;
 
 // Serialization for Boost >= 1.36
 #include "SerializationExportWrapperForCpp.hpp"
