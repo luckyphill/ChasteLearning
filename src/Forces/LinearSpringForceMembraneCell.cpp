@@ -43,6 +43,8 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TransitCellProliferativeType.hpp"
 #include "StemCellProliferativeType.hpp"
 
+#include "Debug.hpp"
+
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::LinearSpringForceMembraneCell()
    : AbstractTwoBodyInteractionForce<ELEMENT_DIM,SPACE_DIM>(),
@@ -52,6 +54,18 @@ LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::LinearSpringForceMembraneC
     mEpithelialMembraneSpringStiffness(15.0),
     mMembraneStromalSpringStiffness(15.0),
     mStromalEpithelialSpringStiffness(15.0),
+    mEpithelialRestLength(1.0),
+    mMembraneRestLength(0.1),
+    mStromalRestLength(1.0),
+    mEpithelialMembraneRestLength(1.0),
+    mMembraneStromalRestLength(0.6),
+    mStromalEpithelialRestLength(1.0),
+    mEpithelialCutOffLength(1.5), // Epithelial covers stem and transit
+    mMembraneCutOffLength(1.5),
+    mStromalCutOffLength(1.5), // Stromal is the differentiated "filler" cells
+    mEpithelialMembraneCutOffLength(1.5),
+    mMembraneStromalCutOffLength(1.5),
+    mStromalEpithelialCutOffLength(1.5),
     mPanethCellStiffnessRatio(1.0)
 {
 }
@@ -85,24 +99,10 @@ c_vector<double, SPACE_DIM> LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>
     c_vector<double, SPACE_DIM> node_a_location = p_node_a->rGetLocation();
     c_vector<double, SPACE_DIM> node_b_location = p_node_b->rGetLocation();
 
-    // Get the node radii for a NodeBasedCellPopulation
-    double node_a_radius = 0.0;
-    double node_b_radius = 0.0;
-
-    if (dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation))
-    {
-        node_a_radius = p_node_a->GetRadius();
-        node_b_radius = p_node_b->GetRadius();
-    }
 
     // Get the unit vector parallel to the line joining the two nodes
     c_vector<double, SPACE_DIM> unitForceDirection;
-    /*
-     * We use the mesh method GetVectorFromAtoB() to compute the direction of the
-     * unit vector along the line joining the two nodes, rather than simply subtract
-     * their positions, because this method can be overloaded (e.g. to enforce a
-     * periodic boundary in Cylindrical2dMesh).
-     */
+
     unitForceDirection = rCellPopulation.rGetMesh().GetVectorFromAtoB(node_a_location, node_b_location);
 
     // Calculate the distance between the two nodes
@@ -113,37 +113,102 @@ c_vector<double, SPACE_DIM> LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>
     unitForceDirection /= distance_between_nodes;
 
     /*
-     * If mUseCutOffLength has been set, then there is zero force between
-     * two nodes located a distance apart greater than mMechanicsCutOffLength in AbstractTwoBodyInteractionForce.
-     */
-    if (this->mUseCutOffLength)
-    {
-        if (distance_between_nodes >= this->GetCutOffLength())
-        {
-            return zero_vector<double>(SPACE_DIM); // c_vector<double,SPACE_DIM>() is not guaranteed to be fresh memory
-        }
-    }
-
-    /*
      * Calculate the rest length of the spring connecting the two nodes with a default
      * value of 1.0.
      */
-    double rest_length_final = 1.0;
 
-    if (dynamic_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation))
-    {
-        rest_length_final = static_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation)->GetRestLength(nodeAGlobalIndex, nodeBGlobalIndex);
-    }
-    else if (dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation))
-    {
-        assert(node_a_radius > 0 && node_b_radius > 0);
-        rest_length_final = node_a_radius+node_b_radius;
-    }
-
-    double rest_length = rest_length_final;
+    // We have three types of cells, with 6 different possible pairings as demarked by the 6 different spring stiffnesses
+    // Need to check which types we have and set spring_constant accordingly
+    // There is also a method that gives the possibilty of a variable spring constant based on whether the spring is in tension or compression
+    // this is not implemented here
 
     CellPtr p_cell_A = rCellPopulation.GetCellUsingLocationIndex(nodeAGlobalIndex);
     CellPtr p_cell_B = rCellPopulation.GetCellUsingLocationIndex(nodeBGlobalIndex);
+
+    // First, determine what we've got
+    bool membraneA = p_cell_A->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>();
+    bool membraneB = p_cell_B->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>();
+
+    bool stromalA = p_cell_A->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>();
+    bool stromalB = p_cell_B->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>();
+
+    bool epiA = ( p_cell_A->GetCellProliferativeType()->IsType<TransitCellProliferativeType>() || p_cell_A->GetCellProliferativeType()->IsType<StemCellProliferativeType>() );
+    bool epiB = ( p_cell_B->GetCellProliferativeType()->IsType<TransitCellProliferativeType>() || p_cell_B->GetCellProliferativeType()->IsType<StemCellProliferativeType>() );
+
+
+    double rest_length_final = 1.0;
+    //rest_length_final = static_cast<MeshBasedCellPopulation<ELEMENT_DIM,SPACE_DIM>*>(&rCellPopulation)->GetRestLength(nodeAGlobalIndex, nodeBGlobalIndex);
+
+    double spring_constant = 0.0;
+
+    // Determine rest lengths and spring stiffnesses
+    if (membraneA)
+    {
+        if (membraneB)
+        {
+            rest_length_final = mMembraneRestLength;
+            spring_constant = mMembraneSpringStiffness;
+        }
+        if (stromalB)
+        {   
+            if (distance_between_nodes >= mMembraneStromalCutOffLength)
+            {
+                return zero_vector<double>(SPACE_DIM);
+            }
+            rest_length_final = mMembraneStromalRestLength;
+            spring_constant = mMembraneStromalSpringStiffness;
+        }
+        if (epiB)
+        {
+            rest_length_final = mEpithelialMembraneRestLength;
+            spring_constant = mEpithelialMembraneSpringStiffness;
+        }
+    }
+
+    if (stromalA)
+    {
+        if (membraneB)
+        {
+            if (distance_between_nodes >= mMembraneStromalCutOffLength)
+            {
+                return zero_vector<double>(SPACE_DIM);
+            }
+            rest_length_final = mMembraneStromalRestLength;
+            spring_constant = mMembraneStromalSpringStiffness;
+        }
+        if (stromalB)
+        {
+            rest_length_final = mStromalRestLength;
+            spring_constant = mStromalSpringStiffness;
+        }
+        if (epiB)
+        {
+            rest_length_final = mStromalEpithelialRestLength;
+            spring_constant = mStromalEpithelialSpringStiffness;
+        }
+    }
+
+    if (epiA)
+    {
+        if (membraneB)
+        {
+            rest_length_final = mEpithelialMembraneRestLength;
+            spring_constant = mEpithelialMembraneSpringStiffness;
+        }
+        if (stromalB)
+        {
+            rest_length_final = mStromalEpithelialRestLength;
+            spring_constant = mStromalEpithelialSpringStiffness;
+        }
+        if (epiB)
+        {
+            rest_length_final = mEpithelialRestLength;
+            spring_constant = mEpithelialSpringStiffness;
+        }
+    }
+
+    assert(spring_constant > 0);
+    double rest_length = rest_length_final;
 
     double ageA = p_cell_A->GetAge();
     double ageB = p_cell_B->GetAge();
@@ -163,7 +228,7 @@ c_vector<double, SPACE_DIM> LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>
 
         if (p_static_cast_cell_population->IsMarkedSpring(cell_pair))
         {
-            // Spring rest length increases from a small value to the normal rest length over 1 hour
+            // Spring rest length increases from a Force value to the normal rest length over 1 hour
             double lambda = mMeinekeDivisionRestingSpringLength;
             rest_length = lambda + (rest_length_final - lambda) * ageA/mMeinekeSpringGrowthDuration;
         }
@@ -179,13 +244,6 @@ c_vector<double, SPACE_DIM> LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>
      */
     double a_rest_length = rest_length*0.5;
     double b_rest_length = a_rest_length;
-
-    if (dynamic_cast<NodeBasedCellPopulation<SPACE_DIM>*>(&rCellPopulation))
-    {
-        assert(node_a_radius > 0 && node_b_radius > 0);
-        a_rest_length = (node_a_radius/(node_a_radius+node_b_radius))*rest_length;
-        b_rest_length = (node_b_radius/(node_a_radius+node_b_radius))*rest_length;
-    }
 
     /*
      * If either of the cells has begun apoptosis, then the length of the spring
@@ -207,137 +265,14 @@ c_vector<double, SPACE_DIM> LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>
 
     double length_change = distance_between_nodes - rest_length;
 
-    double spring_constant = 0.0;
-
-    // We have three types of cells, with 6 different possible pairings as demarked by the 6 different spring stiffnesses
-    // Need to check which types we have and set spring_constant accordingly
-    // Note: Much of this method accounts for the possibilty that a Node Based population might be passed in. The following assumes only Mesh Based
-    // There is also a method that gives the possibilty of a variable spring constant based on whether the spring is in tension or compression
-    // this is not implemented here
-
-    // First, determine what we've got
-
-    bool membraneA = p_cell_A->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>();
-    bool membraneB = p_cell_B->GetCellProliferativeType()->IsType<MembraneCellProliferativeType>();
-
-    bool stromalA = p_cell_A->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>();
-    bool stromalB = p_cell_B->GetCellProliferativeType()->IsType<DifferentiatedCellProliferativeType>();
-
-    bool epiA = ( p_cell_A->GetCellProliferativeType()->IsType<TransitCellProliferativeType>() || p_cell_A->GetCellProliferativeType()->IsType<StemCellProliferativeType>() );
-    bool epiB = ( p_cell_B->GetCellProliferativeType()->IsType<TransitCellProliferativeType>() || p_cell_B->GetCellProliferativeType()->IsType<StemCellProliferativeType>() );
-
-    // Next go through the combinations
-    // This lacks any error catching
-
-    if (membraneA)
-    {
-        if (membraneB)
-        {
-            spring_constant = mMembraneSpringStiffness;
-        }
-        if (stromalB)
-        {
-            spring_constant = mMembraneStromalSpringStiffness;
-        }
-        if (epiB)
-        {
-            spring_constant = mEpithelialMembraneSpringStiffness;
-        }
-    }
-
-    if (stromalA)
-    {
-        if (membraneB)
-        {
-            spring_constant = mMembraneStromalSpringStiffness;
-        }
-        if (stromalB)
-        {
-            spring_constant = mStromalSpringStiffness;
-        }
-        if (epiB)
-        {
-            spring_constant = mStromalEpithelialSpringStiffness;
-        }
-    }
-
-    if (epiA)
-    {
-        if (membraneB)
-        {
-            spring_constant = mEpithelialMembraneSpringStiffness;
-        }
-        if (stromalB)
-        {
-            spring_constant = mStromalEpithelialSpringStiffness;
-        }
-        if (epiB)
-        {
-            spring_constant = mEpithelialSpringStiffness;
-        }
-    }
-
     // std::cout << "Node pair: " << nodeAGlobalIndex << ", " << nodeBGlobalIndex << std::endl;
     // std::cout << "Spring constant: " << spring_constant << std::endl;
     // std::cout << "Direction x: " << unitForceDirection[0] << " Direction y: " << unitForceDirection[1] << std::endl;
     // std::cout << "Length change: " << length_change << std::endl;
+    //TRACE("Force ready to apply")
     return spring_constant * length_change * unitForceDirection;
 
-    
-
 }
-
-
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetEpithelialSpringStiffness()
-{
-    return mEpithelialSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMembraneSpringStiffness()
-{
-    return mMembraneSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetStromalSpringStiffness()
-{
-    return mStromalSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetEpithelialMembraneSpringStiffness()
-{
-    return mEpithelialMembraneSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMembraneStromalSpringStiffness()
-{
-    return mMembraneStromalSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetStromalEpithelialSpringStiffness()
-{
-    return mStromalEpithelialSpringStiffness;
-}
-
-
-
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMeinekeDivisionRestingSpringLength()
-{
-    return mMeinekeDivisionRestingSpringLength;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMeinekeSpringGrowthDuration()
-{
-    return mMeinekeSpringGrowthDuration;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetPanethCellStiffnessRatio()
-{
-    return mPanethCellStiffnessRatio;
-}
-
-
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialSpringStiffness(double epithelialSpringStiffness)
@@ -377,6 +312,85 @@ void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalEpithelialS
 }
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialRestLength(double epithelialRestLength)
+{
+    assert(epithelialRestLength> 0.0);
+    mEpithelialRestLength = epithelialRestLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMembraneRestLength(double membraneRestLength)
+{
+    assert(membraneRestLength > 0.0);
+    mMembraneRestLength = membraneRestLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalRestLength(double stromalRestLength)
+{
+    assert(stromalRestLength > 0.0);
+    mStromalRestLength = stromalRestLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialMembraneRestLength(double epithelialMembraneRestLength)
+{
+    assert(epithelialMembraneRestLength > 0.0);
+    mEpithelialMembraneRestLength = epithelialMembraneRestLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMembraneStromalRestLength(double membraneStromalRestLength)
+{
+    assert(membraneStromalRestLength > 0.0);
+    mMembraneStromalRestLength = membraneStromalRestLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalEpithelialRestLength(double stromalEpithelialRestLength)
+{
+    assert(stromalEpithelialRestLength > 0.0);
+    mStromalEpithelialRestLength = stromalEpithelialRestLength;
+}
+
+
+
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialCutOffLength(double epithelialCutOffLength)
+{
+    assert(epithelialCutOffLength> 0.0);
+    mEpithelialCutOffLength = epithelialCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMembraneCutOffLength(double membraneCutOffLength)
+{
+    assert(membraneCutOffLength > 0.0);
+    mMembraneCutOffLength = membraneCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalCutOffLength(double stromalCutOffLength)
+{
+    assert(stromalCutOffLength > 0.0);
+    mStromalCutOffLength = stromalCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialMembraneCutOffLength(double epithelialMembraneCutOffLength)
+{
+    assert(epithelialMembraneCutOffLength > 0.0);
+    mEpithelialMembraneCutOffLength = epithelialMembraneCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMembraneStromalCutOffLength(double membraneStromalCutOffLength)
+{
+    assert(membraneStromalCutOffLength > 0.0);
+    mMembraneStromalCutOffLength = membraneStromalCutOffLength;
+}
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
+void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetStromalEpithelialCutOffLength(double stromalEpithelialCutOffLength)
+{
+    assert(stromalEpithelialCutOffLength > 0.0);
+    mStromalEpithelialCutOffLength = stromalEpithelialCutOffLength;
+}
+
+
+
+
+template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetMeinekeDivisionRestingSpringLength(double divisionRestingSpringLength)
 {
     assert(divisionRestingSpringLength <= 1.0);
@@ -404,32 +418,24 @@ void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetPanethCellStiffnes
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::OutputForceParameters(out_stream& rParamsFile)
 {
-    *rParamsFile << "\t\t\t<EpithelialSpringStiffness>" << mEpithelialSpringStiffness << "</EpithelialSpringStiffness>\n";
-    *rParamsFile << "\t\t\t<MembraneSpringStiffness>" << mMembraneSpringStiffness << "</MembraneSpringStiffness>\n";
-    *rParamsFile << "\t\t\t<StromalSpringStiffness>" << mStromalSpringStiffness << "</StromalSpringStiffness>\n";
-    *rParamsFile << "\t\t\t<EpithelialMembraneSpringStiffness>" << mEpithelialMembraneSpringStiffness << "</EpithelialMembraneSpringStiffness>\n";
-    *rParamsFile << "\t\t\t<MembranetromalSpringStiffness>" << mMembraneStromalSpringStiffness << "</MembranetromalSpringStiffness>\n";
-    *rParamsFile << "\t\t\t<StromalEpithelialSpringStiffness>" << mStromalEpithelialSpringStiffness << "</StromalEpithelialSpringStiffness>\n";
-
-    *rParamsFile << "\t\t\t<MeinekeDivisionRestingSpringLength>" << mMeinekeDivisionRestingSpringLength << "</MeinekeDivisionRestingSpringLength>\n";
-    *rParamsFile << "\t\t\t<MeinekeSpringGrowthDuration>" << mMeinekeSpringGrowthDuration << "</MeinekeSpringGrowthDuration>\n";
-    *rParamsFile << "\t\t\t<PanethCellStiffnessRatio>" << mPanethCellStiffnessRatio << "</PanethCellStiffnessRatio>\n";
+    TRACE("OutputForceParameters");
 
     // Call method on direct parent class
-    AbstractTwoBodyInteractionForce<ELEMENT_DIM,SPACE_DIM>::OutputForceParameters(rParamsFile);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // Explicit instantiation
 /////////////////////////////////////////////////////////////////////////////
 
-template class LinearSpringForceMembraneCell<1,1>;
-template class LinearSpringForceMembraneCell<1,2>;
-template class LinearSpringForceMembraneCell<2,2>;
-template class LinearSpringForceMembraneCell<1,3>;
-template class LinearSpringForceMembraneCell<2,3>;
-template class LinearSpringForceMembraneCell<3,3>;
+// template class LinearSpringForceMembraneCell<1,1>;
+// template class LinearSpringForceMembraneCell<1,2>;
+// template class LinearSpringForceMembraneCell<2,2>;
+// template class LinearSpringForceMembraneCell<1,3>;
+// template class LinearSpringForceMembraneCell<2,3>;
+// template class LinearSpringForceMembraneCell<3,3>;
+
+template class LinearSpringForceMembraneCell<3>;
 
 // Serialization for Boost >= 1.36
 #include "SerializationExportWrapperForCpp.hpp"
-EXPORT_TEMPLATE_CLASS_ALL_DIMS(LinearSpringForceMembraneCell)
+EXPORT_TEMPLATE_CLASS_SAME_DIMS(LinearSpringForceMembraneCell)

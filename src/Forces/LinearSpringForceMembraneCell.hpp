@@ -107,6 +107,20 @@ protected:
     double mMembraneStromalSpringStiffness;
     double mStromalEpithelialSpringStiffness;
 
+    double mEpithelialRestLength; // Epithelial covers stem and transit
+    double mMembraneRestLength;
+    double mStromalRestLength; // Stromal is the differentiated "filler" cells
+    double mEpithelialMembraneRestLength;
+    double mMembraneStromalRestLength;
+    double mStromalEpithelialRestLength;
+
+    double mEpithelialCutOffLength; // Epithelial covers stem and transit
+    double mMembraneCutOffLength;
+    double mStromalCutOffLength; // Stromal is the differentiated "filler" cells
+    double mEpithelialMembraneCutOffLength;
+    double mMembraneStromalCutOffLength;
+    double mStromalEpithelialCutOffLength;
+
 
     /**
      * Initial resting spring length after cell division.
@@ -178,25 +192,26 @@ public:
                                                      unsigned nodeBGlobalIndex,
                                                      AbstractCellPopulation<ELEMENT_DIM,SPACE_DIM>& rCellPopulation);
 
-    double GetEpithelialSpringStiffness(); // Epithelial covers stem and transit
-    double GetMembraneSpringStiffness();
-    double GetStromalSpringStiffness(); // Stromal is the differentiated "filler" cells
-    double GetEpithelialMembraneSpringStiffness();
-    double GetMembraneStromalSpringStiffness();
-    double GetStromalEpithelialSpringStiffness();
-
-    double GetMeinekeDivisionRestingSpringLength();
-
-    double GetMeinekeSpringGrowthDuration();
-
-    double GetPanethCellStiffnessRatio();
-
     void SetEpithelialSpringStiffness(double epithelialSpringStiffness); // Epithelial covers stem and transit
     void SetMembraneSpringStiffness(double membraneSpringStiffness);
     void SetStromalSpringStiffness(double stromalSpringStiffness); // Stromal is the differentiated "filler" cells
     void SetEpithelialMembraneSpringStiffness(double epithelialMembraneSpringStiffness);
     void SetMembraneStromalSpringStiffness(double membraneStromalSpringStiffness);
     void SetStromalEpithelialSpringStiffness(double stromalEpithelialSpringStiffness);
+
+    void SetEpithelialRestLength(double epithelialRestLength); // Epithelial covers stem and transit
+    void SetMembraneRestLength(double membraneRestLength);
+    void SetStromalRestLength(double stromalRestLength); // Stromal is the differentiated "filler" cells
+    void SetEpithelialMembraneRestLength(double epithelialMembraneRestLength);
+    void SetMembraneStromalRestLength(double membraneStromalRestLength);
+    void SetStromalEpithelialRestLength(double stromalEpithelialRestLength);
+
+    void SetEpithelialCutOffLength(double epithelialCutOffLength); // Epithelial covers stem and transit
+    void SetMembraneCutOffLength(double membraneCutOffLength);
+    void SetStromalCutOffLength(double stromalCutOffLength); // Stromal is the differentiated "filler" cells
+    void SetEpithelialMembraneCutOffLength(double epithelialMembraneCutOffLength);
+    void SetMembraneStromalCutOffLength(double membraneStromalCutOffLength);
+    void SetStromalEpithelialCutOffLength(double stromalEpithelialCutOffLength);
 
     /**
      * Set mMeinekeDivisionRestingSpringLength.
@@ -228,6 +243,6 @@ public:
 };
 
 #include "SerializationExportWrapper.hpp"
-EXPORT_TEMPLATE_CLASS_ALL_DIMS(LinearSpringForceMembraneCell)
+EXPORT_TEMPLATE_CLASS_SAME_DIMS(LinearSpringForceMembraneCell)
 
 #endif /*LINEARSPRINGFORCEMEMBRANECELL_HPP_*/

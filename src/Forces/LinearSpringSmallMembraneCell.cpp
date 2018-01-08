@@ -242,64 +242,12 @@ c_vector<double, SPACE_DIM> LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>
     // std::cout << "Spring constant: " << spring_constant << std::endl;
     // std::cout << "Direction x: " << unitForceDirection[0] << " Direction y: " << unitForceDirection[1] << std::endl;
     // std::cout << "Length change: " << length_change << std::endl;
-    TRACE("Force ready to apply")
+    //TRACE("Force ready to apply")
     return spring_constant * length_change * unitForceDirection;
 
     
 
 }
-
-
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetEpithelialSpringStiffness()
-{
-    return mEpithelialSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMembraneSpringStiffness()
-{
-    return mMembraneSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetStromalSpringStiffness()
-{
-    return mStromalSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetEpithelialMembraneSpringStiffness()
-{
-    return mEpithelialMembraneSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMembraneStromalSpringStiffness()
-{
-    return mMembraneStromalSpringStiffness;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetStromalEpithelialSpringStiffness()
-{
-    return mStromalEpithelialSpringStiffness;
-}
-
-
-
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMeinekeDivisionRestingSpringLength()
-{
-    return mMeinekeDivisionRestingSpringLength;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetMeinekeSpringGrowthDuration()
-{
-    return mMeinekeSpringGrowthDuration;
-}
-template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
-double LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::GetPanethCellStiffnessRatio()
-{
-    return mPanethCellStiffnessRatio;
-}
-
-
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetEpithelialSpringStiffness(double epithelialSpringStiffness)
@@ -445,6 +393,7 @@ void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::SetPanethCellStiffnes
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 void LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::OutputForceParameters(out_stream& rParamsFile)
 {
+    TRACE("OutputForceParameters");
     *rParamsFile << "\t\t\t<EpithelialSpringStiffness>" << mEpithelialSpringStiffness << "</EpithelialSpringStiffness>\n";
     *rParamsFile << "\t\t\t<MembraneSpringStiffness>" << mMembraneSpringStiffness << "</MembraneSpringStiffness>\n";
     *rParamsFile << "\t\t\t<StromalSpringStiffness>" << mStromalSpringStiffness << "</StromalSpringStiffness>\n";

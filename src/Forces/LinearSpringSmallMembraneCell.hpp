@@ -192,19 +192,6 @@ public:
                                                      unsigned nodeBGlobalIndex,
                                                      AbstractCellPopulation<ELEMENT_DIM,SPACE_DIM>& rCellPopulation);
 
-    double GetEpithelialSpringStiffness(); // Epithelial covers stem and transit
-    double GetMembraneSpringStiffness();
-    double GetStromalSpringStiffness(); // Stromal is the differentiated "filler" cells
-    double GetEpithelialMembraneSpringStiffness();
-    double GetMembraneStromalSpringStiffness();
-    double GetStromalEpithelialSpringStiffness();
-
-    double GetMeinekeDivisionRestingSpringLength();
-
-    double GetMeinekeSpringGrowthDuration();
-
-    double GetPanethCellStiffnessRatio();
-
     void SetEpithelialSpringStiffness(double epithelialSpringStiffness); // Epithelial covers stem and transit
     void SetMembraneSpringStiffness(double membraneSpringStiffness);
     void SetStromalSpringStiffness(double stromalSpringStiffness); // Stromal is the differentiated "filler" cells

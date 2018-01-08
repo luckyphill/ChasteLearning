@@ -19,7 +19,6 @@
 #include "EpithelialLayerBasementMembraneForceModified.hpp"
 #include "EpithelialLayerLinearSpringForce.hpp"
 
-#include "LinearSpringForceMembraneCell.hpp"
 #include "MembraneCellForce.hpp" // A force to restore the membrane to it's preferred shape
 #include "NoCellCycleModel.hpp"
 
@@ -32,12 +31,15 @@
 #include "NodeBasedCellPopulation.hpp"
 #include "CellsGenerator.hpp"
 #include "TrianglesMeshWriter.hpp"
-#include "LinearSpringSmallMembraneCell.hpp"
+
+
 #include "DifferentiatedCellProliferativeType.hpp"
 
 #include "FakePetscSetup.hpp"
 #include "Debug.hpp"
-#include "LinearTest.hpp"
+
+#include "LinearSpringForceMembraneCell.hpp"
+#include "LinearSpringSmallMembraneCell.hpp"
 
 
 class TestIsolatedMembrane : public AbstractCellBasedTestSuite
@@ -250,7 +252,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 		double membraneStromalCutOffLength = 0.6;	// 0.6 If this is too small the stromal cells never attach to the membrane cells
 		double mStromalEpithelialCutOffLength;
 
-		double torsional_stiffness = 0.010;			// 10.0
+		double torsional_stiffness = 0.020;			// 10.0
 
 		double targetCurvatureStemStem = 0.3;		// not used in this test, see MembraneCellForce.cpp lines 186 - 190
 		double targetCurvatureStemTrans = 0;
@@ -369,7 +371,7 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 		simulator.SetDt(dt);
 		simulator.SetSamplingTimestepMultiple(sampling_multiple);
 
-		MAKE_PTR(LinearTest<2>, p_force);
+		MAKE_PTR(LinearSpringForceMembraneCell<2>, p_force);
 		p_force->SetEpithelialSpringStiffness(epithelialStiffness);
 		p_force->SetMembraneSpringStiffness(membraneStiffness);
 		p_force->SetStromalSpringStiffness(stromalStiffness);
@@ -377,20 +379,20 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 		p_force->SetMembraneStromalSpringStiffness(membraneStromalStiffness);
 		p_force->SetStromalEpithelialSpringStiffness(stromalEpithelialStiffness);
 
-		// p_force->SetEpithelialRestLength(epithelialRestLength);
-		// p_force->SetMembraneRestLength(membraneRestLength);
-		// p_force->SetStromalRestLength(stromalRestLength);
-		// p_force->SetEpithelialMembraneRestLength(epithelialMembraneRestLength);
-		// p_force->SetMembraneStromalRestLength(membraneStromalRestLength);
-		// p_force->SetStromalEpithelialRestLength(stromalEpithelialRestLength);
+		p_force->SetEpithelialRestLength(epithelialRestLength);
+		p_force->SetMembraneRestLength(membraneRestLength);
+		p_force->SetStromalRestLength(stromalRestLength);
+		p_force->SetEpithelialMembraneRestLength(epithelialMembraneRestLength);
+		p_force->SetMembraneStromalRestLength(membraneStromalRestLength);
+		p_force->SetStromalEpithelialRestLength(stromalEpithelialRestLength);
 
-		//p_force->SetMembraneStromalCutOffLength(membraneStromalCutOffLength);
+		p_force->SetMembraneStromalCutOffLength(membraneStromalCutOffLength);
 		simulator.AddForce(p_force);
 
 		MAKE_PTR(MembraneCellForce, p_membrane_force);
 		p_membrane_force->SetBasementMembraneTorsionalStiffness(torsional_stiffness);
 		p_membrane_force->SetTargetCurvatures(targetCurvatureStemStem, targetCurvatureStemTrans, targetCurvatureTransTrans);
-		simulator.AddForce(p_membrane_force);
+		//simulator.AddForce(p_membrane_force);
 		TRACE("Setup works")
 		simulator.Solve();
 	}
