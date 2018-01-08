@@ -1,6 +1,8 @@
-#include "MembraneCellForce.hpp"
 #include "AbstractCellProperty.hpp"
 #include "Debug.hpp"
+
+#include "MembraneCellForce.hpp"
+
 
 /*
  * Created by: PHILLIP BROWN, 27/10/2017
@@ -242,14 +244,14 @@ std::vector<unsigned> MembraneCellForce::GetMembraneIndices(AbstractCellPopulati
     return membrane_indices;
 }
 
-std::vector<std::vector<unsigned>> MembraneCellForce::GetMembraneSections(AbstractCellPopulation<2>& rCellPopulation)
+std::vector<std::vector<unsigned> > MembraneCellForce::GetMembraneSections(AbstractCellPopulation<2>& rCellPopulation)
 {
 	MeshBasedCellPopulation<2>* cell_population = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 	
 	// Need to determine the bits of membrane floating around
 	std::set<unsigned> freeMembraneIndices;
 
-	std::vector<std::vector<unsigned>> membraneSections;
+	std::vector<std::vector<unsigned> > membraneSections;
 
 	unsigned node_index_for_cylindrical = 0;
 
@@ -323,11 +325,11 @@ void MembraneCellForce::AddForceContribution(AbstractCellPopulation<2>& rCellPop
 	MeshBasedCellPopulation<2>* p_tissue = static_cast<MeshBasedCellPopulation<2>*>(&rCellPopulation);
 	
 	// Need to determine the restoring force on the membrane putting it back to it's preferred shape
-	std::vector<std::vector<unsigned>> membraneSections = GetMembraneSections(rCellPopulation);
+	std::vector<std::vector<unsigned> > membraneSections = GetMembraneSections(rCellPopulation);
 
 	//std::cout << "The number of membrane cells is: " << membraneIndices.size() << std::endl;
 
-	for (std::vector<std::vector<unsigned>>::iterator iter = membraneSections.begin(); iter != membraneSections.end(); ++iter)
+	for (std::vector<std::vector<unsigned> >::iterator iter = membraneSections.begin(); iter != membraneSections.end(); ++iter)
 	{
 		std::vector<unsigned> membraneIndices = *iter;
 	// We loop through the membrane sections to set the restoring forces

@@ -7,7 +7,6 @@ other. Otherwise they are still considered "differentiated" cells for other inte
 MODIFICATIONS around lines 48, 211, 259, 410, 448
 */
 
-#include "LinearSpringSmallMembraneCell.hpp"
 #include "IsNan.hpp"
 #include "AbstractCellProperty.hpp"
 
@@ -17,6 +16,9 @@ MODIFICATIONS around lines 48, 211, 259, 410, 448
 #include "StemCellProliferativeType.hpp"
 
 #include "Debug.hpp"
+
+#include "LinearSpringSmallMembraneCell.hpp"
+
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 LinearSpringSmallMembraneCell<ELEMENT_DIM,SPACE_DIM>::LinearSpringSmallMembraneCell()

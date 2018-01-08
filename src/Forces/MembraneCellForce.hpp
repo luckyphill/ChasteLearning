@@ -158,7 +158,7 @@ public :
 
 
     // Returns each distinct membrane
-    std::vector<std::vector<unsigned>> GetMembraneSections(AbstractCellPopulation<2>& rCellPopulation);
+    std::vector<std::vector<unsigned> > GetMembraneSections(AbstractCellPopulation<2>& rCellPopulation);
 
    
 

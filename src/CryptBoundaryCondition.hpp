@@ -39,7 +39,7 @@ public:
             if (cell_iter->HasCellProperty<BoundaryCellProperty>())
             {
                 // PRINT_VARIABLE(rOldLocations[p_node])
-                typename std::map<Node<2>*, c_vector<double, 2> >::const_iterator it = rOldLocations.find(p_node);
+                std::map<Node<2>*, c_vector<double, 2> >::const_iterator it = rOldLocations.find(p_node);
                 c_vector<double, 2> previous_location = it->second;
                 p_node->rGetModifiableLocation()[0] = previous_location[0];
                 p_node->rGetModifiableLocation()[1] = previous_location[1]; //5.19; //rOldLocations[p_node][1];

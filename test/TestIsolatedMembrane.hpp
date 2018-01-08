@@ -35,11 +35,14 @@
 
 #include "DifferentiatedCellProliferativeType.hpp"
 
-#include "FakePetscSetup.hpp"
-#include "Debug.hpp"
-
 #include "LinearSpringForceMembraneCell.hpp"
 #include "LinearSpringSmallMembraneCell.hpp"
+#include "Debug.hpp"
+
+#include "FakePetscSetup.hpp"
+
+
+
 
 
 class TestIsolatedMembrane : public AbstractCellBasedTestSuite
