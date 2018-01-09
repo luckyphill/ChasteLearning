@@ -34,7 +34,6 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "LinearSpringForceMembraneCell.hpp"
 #include "IsNan.hpp"
 #include "AbstractCellProperty.hpp"
 
@@ -44,6 +43,9 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "StemCellProliferativeType.hpp"
 
 #include "Debug.hpp"
+
+#include "LinearSpringForceMembraneCell.hpp"
+
 
 template<unsigned ELEMENT_DIM, unsigned SPACE_DIM>
 LinearSpringForceMembraneCell<ELEMENT_DIM,SPACE_DIM>::LinearSpringForceMembraneCell()

@@ -35,11 +35,18 @@
 
 #include "DifferentiatedCellProliferativeType.hpp"
 
-#include "FakePetscSetup.hpp"
-#include "Debug.hpp"
-
 #include "LinearSpringForceMembraneCell.hpp"
 #include "LinearSpringSmallMembraneCell.hpp"
+<<<<<<< HEAD
+#include "ForceTest.hpp"
+=======
+#include "Debug.hpp"
+
+#include "FakePetscSetup.hpp"
+
+
+
+>>>>>>> ddb31782a5568941cd6a260838fc38deae16e03e
 
 
 class TestIsolatedMembrane : public AbstractCellBasedTestSuite
@@ -371,22 +378,22 @@ class TestIsolatedMembrane : public AbstractCellBasedTestSuite
 		simulator.SetDt(dt);
 		simulator.SetSamplingTimestepMultiple(sampling_multiple);
 
-		MAKE_PTR(LinearSpringForceMembraneCell<2>, p_force);
+		MAKE_PTR(ForceTest<2>, p_force);
 		p_force->SetEpithelialSpringStiffness(epithelialStiffness);
-		p_force->SetMembraneSpringStiffness(membraneStiffness);
-		p_force->SetStromalSpringStiffness(stromalStiffness);
-		p_force->SetEpithelialMembraneSpringStiffness(epithelialMembraneStiffness);
-		p_force->SetMembraneStromalSpringStiffness(membraneStromalStiffness);
-		p_force->SetStromalEpithelialSpringStiffness(stromalEpithelialStiffness);
+		// p_force->SetMembraneSpringStiffness(membraneStiffness);
+		// p_force->SetStromalSpringStiffness(stromalStiffness);
+		// p_force->SetEpithelialMembraneSpringStiffness(epithelialMembraneStiffness);
+		// p_force->SetMembraneStromalSpringStiffness(membraneStromalStiffness);
+		// p_force->SetStromalEpithelialSpringStiffness(stromalEpithelialStiffness);
 
 		p_force->SetEpithelialRestLength(epithelialRestLength);
-		p_force->SetMembraneRestLength(membraneRestLength);
-		p_force->SetStromalRestLength(stromalRestLength);
-		p_force->SetEpithelialMembraneRestLength(epithelialMembraneRestLength);
-		p_force->SetMembraneStromalRestLength(membraneStromalRestLength);
-		p_force->SetStromalEpithelialRestLength(stromalEpithelialRestLength);
+		// p_force->SetMembraneRestLength(membraneRestLength);
+		// p_force->SetStromalRestLength(stromalRestLength);
+		// p_force->SetEpithelialMembraneRestLength(epithelialMembraneRestLength);
+		// p_force->SetMembraneStromalRestLength(membraneStromalRestLength);
+		// p_force->SetStromalEpithelialRestLength(stromalEpithelialRestLength);
 
-		p_force->SetMembraneStromalCutOffLength(membraneStromalCutOffLength);
+		//p_force->SetMembraneStromalCutOffLength(membraneStromalCutOffLength);
 		simulator.AddForce(p_force);
 
 		MAKE_PTR(MembraneCellForce, p_membrane_force);
